@@ -1,0 +1,112 @@
+[data-theme="mech"] {
+  --theme-bg: #1e1a14;
+  --theme-bg-secondary: #2a2418;
+  --theme-surface: #38302a;
+  --theme-surface-hover: #484038;
+  --theme-border: #8a7a5a;
+  --theme-text: #f0e8d8;
+  --theme-text-secondary: #c0a880;
+  --theme-accent: #d4a040;
+  --theme-accent-secondary: #a06830;
+  --theme-p1: #d4a040;
+  --theme-p2: #70b0a0;
+  --theme-narration-bg: rgba(56, 48, 42, 0.7);
+  --theme-pixel-size: 4px;
+}
+
+/* Gear decoration */
+.theme-deco-corner::before {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  opacity: 0.5;
+  animation: gearSpin 8s linear infinite;
+  box-shadow:
+    /* gear teeth */
+    8px 0px 0 0 #8a7a5a,
+    0px 8px 0 0 #8a7a5a,
+    16px 8px 0 0 #8a7a5a,
+    8px 16px 0 0 #8a7a5a,
+    /* gear body */
+    4px 4px 0 0 #a08860,
+    8px 4px 0 0 #a08860,
+    12px 4px 0 0 #a08860,
+    4px 8px 0 0 #a08860,
+    8px 8px 0 0 #b09870,
+    12px 8px 0 0 #a08860,
+    4px 12px 0 0 #a08860,
+    8px 12px 0 0 #a08860,
+    12px 12px 0 0 #a08860;
+}
+
+@keyframes gearSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Pipe/bolt decoration */
+.theme-deco-corner::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  bottom: 8px;
+  width: 4px;
+  height: 4px;
+  opacity: 0.4;
+  box-shadow:
+    /* pipe horizontal */
+    0px 4px 0 0 #706050,
+    4px 4px 0 0 #807060,
+    8px 4px 0 0 #807060,
+    12px 4px 0 0 #807060,
+    16px 4px 0 0 #706050,
+    /* bolts */
+    0px 0px 0 0 #a09080,
+    16px 0px 0 0 #a09080,
+    /* steam */
+    20px 0px 0 0 rgba(200, 200, 200, 0.3),
+    24px -4px 0 0 rgba(200, 200, 200, 0.2);
+}
+
+/* Steam particle animation */
+[data-theme="mech"] .theme-particles::before,
+[data-theme="mech"] .theme-particles::after {
+  content: '';
+  position: fixed;
+  width: 6px;
+  height: 6px;
+  background: rgba(200, 190, 170, 0.2);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: steam 5s ease-out infinite;
+}
+
+[data-theme="mech"] .theme-particles::before {
+  bottom: 20%;
+  left: 8%;
+  animation-delay: 0s;
+}
+
+[data-theme="mech"] .theme-particles::after {
+  bottom: 40%;
+  right: 12%;
+  animation-delay: 2.5s;
+}
+
+@keyframes steam {
+  0% { opacity: 0; transform: translateY(0) scale(1); }
+  20% { opacity: 0.5; }
+  100% { opacity: 0; transform: translateY(-60px) scale(2.5); }
+}
+
+/* Rivet border */
+[data-theme="mech"] .pixel-border {
+  border-image: repeating-linear-gradient(
+    90deg,
+    #8a7a5a 0px, #8a7a5a 6px,
+    #6a5a3a 6px, #6a5a3a 8px,
+    #a09070 8px, #a09070 10px,
+    #6a5a3a 10px, #6a5a3a 12px
+  ) 4;
+}

@@ -1,0 +1,111 @@
+[data-theme="cyber"] {
+  --theme-bg: #0a0a14;
+  --theme-bg-secondary: #10101e;
+  --theme-surface: #18182a;
+  --theme-surface-hover: #222238;
+  --theme-border: #6a40c8;
+  --theme-text: #e8e0f8;
+  --theme-text-secondary: #a090c8;
+  --theme-accent: #c840e8;
+  --theme-accent-secondary: #40e8e8;
+  --theme-p1: #e840a0;
+  --theme-p2: #40e8e8;
+  --theme-narration-bg: rgba(24, 24, 42, 0.7);
+  --theme-pixel-size: 4px;
+}
+
+/* Circuit decoration */
+.theme-deco-corner::before {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  opacity: 0.4;
+  box-shadow:
+    /* circuit lines */
+    0px 0px 0 0 #6a40c8,
+    4px 0px 0 0 #6a40c8,
+    8px 0px 0 0 #6a40c8,
+    8px 4px 0 0 #6a40c8,
+    8px 8px 0 0 #c840e8,
+    8px 12px 0 0 #6a40c8,
+    12px 12px 0 0 #6a40c8,
+    16px 12px 0 0 #6a40c8,
+    16px 16px 0 0 #6a40c8,
+    16px 20px 0 0 #40e8e8,
+    /* nodes */
+    0px 0px 0 1px rgba(200, 64, 232, 0.5),
+    8px 8px 0 1px rgba(200, 64, 232, 0.5),
+    16px 20px 0 1px rgba(64, 232, 232, 0.5);
+}
+
+/* Data stream decoration */
+.theme-deco-corner::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  bottom: 8px;
+  width: 4px;
+  height: 4px;
+  opacity: 0.3;
+  animation: dataFlow 2s steps(4) infinite;
+  box-shadow:
+    0px 0px 0 0 #40e8e8,
+    0px 4px 0 0 #40e8e8,
+    0px 8px 0 0 rgba(64, 232, 232, 0.6),
+    0px 12px 0 0 rgba(64, 232, 232, 0.3),
+    0px 16px 0 0 rgba(64, 232, 232, 0.1);
+}
+
+@keyframes dataFlow {
+  0% { transform: translateY(-8px); opacity: 0.3; }
+  50% { opacity: 0.6; }
+  100% { transform: translateY(8px); opacity: 0.3; }
+}
+
+/* Neon flicker animation */
+[data-theme="cyber"] .theme-particles::before,
+[data-theme="cyber"] .theme-particles::after {
+  content: '';
+  position: fixed;
+  width: 2px;
+  height: 40px;
+  pointer-events: none;
+  animation: neonFlicker 3s ease-in-out infinite;
+}
+
+[data-theme="cyber"] .theme-particles::before {
+  top: 10%;
+  right: 5%;
+  background: linear-gradient(to bottom, transparent, #c840e8, transparent);
+  animation-delay: 0s;
+}
+
+[data-theme="cyber"] .theme-particles::after {
+  bottom: 20%;
+  left: 3%;
+  background: linear-gradient(to bottom, transparent, #40e8e8, transparent);
+  animation-delay: 1.5s;
+}
+
+@keyframes neonFlicker {
+  0%, 100% { opacity: 0.1; }
+  5% { opacity: 0.8; }
+  10% { opacity: 0.2; }
+  15% { opacity: 0.9; }
+  20%, 80% { opacity: 0.4; }
+  85% { opacity: 0.8; }
+  90% { opacity: 0.1; }
+  95% { opacity: 0.7; }
+}
+
+/* Glitch border */
+[data-theme="cyber"] .pixel-border {
+  border-image: repeating-linear-gradient(
+    90deg,
+    #6a40c8 0px, #6a40c8 4px,
+    #c840e8 4px, #c840e8 6px,
+    #40e8e8 6px, #40e8e8 8px,
+    #6a40c8 8px, #6a40c8 12px
+  ) 4;
+}

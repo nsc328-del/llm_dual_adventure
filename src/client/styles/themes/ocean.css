@@ -1,0 +1,105 @@
+[data-theme="ocean"] {
+  --theme-bg: #0a1e2e;
+  --theme-bg-secondary: #122838;
+  --theme-surface: #1a3448;
+  --theme-surface-hover: #244458;
+  --theme-border: #3a7a9a;
+  --theme-text: #d8eef8;
+  --theme-text-secondary: #88bcd0;
+  --theme-accent: #50b8e8;
+  --theme-accent-secondary: #e8c850;
+  --theme-p1: #50d8a0;
+  --theme-p2: #e88050;
+  --theme-narration-bg: rgba(26, 52, 72, 0.7);
+  --theme-pixel-size: 4px;
+}
+
+/* Anchor decoration */
+.theme-deco-corner::before {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  opacity: 0.5;
+  box-shadow:
+    /* anchor ring */
+    8px 0px 0 0 #8ab8d0,
+    4px 4px 0 0 #8ab8d0,
+    12px 4px 0 0 #8ab8d0,
+    8px 8px 0 0 #8ab8d0,
+    /* anchor shaft */
+    8px 12px 0 0 #6a98b0,
+    8px 16px 0 0 #6a98b0,
+    8px 20px 0 0 #6a98b0,
+    /* anchor arms */
+    0px 24px 0 0 #6a98b0,
+    4px 24px 0 0 #6a98b0,
+    12px 24px 0 0 #6a98b0,
+    16px 24px 0 0 #6a98b0,
+    0px 20px 0 0 #6a98b0,
+    16px 20px 0 0 #6a98b0;
+}
+
+/* Fish decoration */
+.theme-deco-corner::after {
+  content: '';
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  width: 4px;
+  height: 4px;
+  opacity: 0.4;
+  box-shadow:
+    0px 4px 0 0 #50b8e8,
+    4px 0px 0 0 #50b8e8,
+    4px 4px 0 0 #60c8f0,
+    4px 8px 0 0 #50b8e8,
+    8px 4px 0 0 #60c8f0,
+    12px 4px 0 0 #50b8e8,
+    16px 0px 0 0 #50b8e8,
+    16px 8px 0 0 #50b8e8,
+    8px 0px 0 0 #40a0d0;
+}
+
+/* Bubble animation */
+[data-theme="ocean"] .theme-particles::before,
+[data-theme="ocean"] .theme-particles::after {
+  content: '';
+  position: fixed;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid rgba(80, 184, 232, 0.4);
+  background: rgba(80, 184, 232, 0.1);
+  pointer-events: none;
+  animation: bubble 6s ease-in infinite;
+}
+
+[data-theme="ocean"] .theme-particles::before {
+  bottom: -10px;
+  left: 10%;
+  animation-delay: 0s;
+}
+
+[data-theme="ocean"] .theme-particles::after {
+  bottom: -10px;
+  right: 15%;
+  width: 4px;
+  height: 4px;
+  animation-delay: 3s;
+}
+
+@keyframes bubble {
+  0% { opacity: 0; transform: translateY(0); }
+  10% { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(-100vh); }
+}
+
+/* Rope border */
+[data-theme="ocean"] .pixel-border {
+  border-image: repeating-linear-gradient(
+    90deg,
+    #3a7a9a 0px, #3a7a9a 4px,
+    #2a6a8a 4px, #2a6a8a 8px
+  ) 4;
+}

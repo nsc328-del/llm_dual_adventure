@@ -1,0 +1,116 @@
+[data-theme="western"] {
+  --theme-bg: #1e1410;
+  --theme-bg-secondary: #2a1e18;
+  --theme-surface: #382a22;
+  --theme-surface-hover: #483a30;
+  --theme-border: #8a6840;
+  --theme-text: #f0e8d8;
+  --theme-text-secondary: #c0a878;
+  --theme-accent: #d4883a;
+  --theme-accent-secondary: #c84040;
+  --theme-p1: #d4a040;
+  --theme-p2: #5090c0;
+  --theme-narration-bg: rgba(56, 42, 34, 0.7);
+  --theme-pixel-size: 4px;
+}
+
+/* Shield decoration */
+.theme-deco-corner::before {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  opacity: 0.5;
+  box-shadow:
+    /* shield outline */
+    4px 0px 0 0 #8a6840,
+    8px 0px 0 0 #8a6840,
+    12px 0px 0 0 #8a6840,
+    0px 4px 0 0 #8a6840,
+    16px 4px 0 0 #8a6840,
+    0px 8px 0 0 #8a6840,
+    16px 8px 0 0 #8a6840,
+    4px 12px 0 0 #8a6840,
+    12px 12px 0 0 #8a6840,
+    8px 16px 0 0 #8a6840,
+    /* shield fill */
+    4px 4px 0 0 #a08050,
+    8px 4px 0 0 #b09060,
+    12px 4px 0 0 #a08050,
+    4px 8px 0 0 #a08050,
+    8px 8px 0 0 #c84040,
+    12px 8px 0 0 #a08050,
+    8px 12px 0 0 #b09060;
+}
+
+/* Sword decoration */
+.theme-deco-corner::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  bottom: 4px;
+  width: 4px;
+  height: 4px;
+  opacity: 0.4;
+  box-shadow:
+    /* blade */
+    8px 0px 0 0 #c0c0c0,
+    8px 4px 0 0 #d0d0d0,
+    8px 8px 0 0 #c0c0c0,
+    8px 12px 0 0 #d0d0d0,
+    8px 16px 0 0 #c0c0c0,
+    /* guard */
+    4px 20px 0 0 #d4883a,
+    8px 20px 0 0 #d4883a,
+    12px 20px 0 0 #d4883a,
+    /* handle */
+    8px 24px 0 0 #6b4226,
+    8px 28px 0 0 #6b4226,
+    /* pommel */
+    8px 32px 0 0 #d4883a;
+}
+
+/* Torch flicker */
+[data-theme="western"] .theme-particles::before,
+[data-theme="western"] .theme-particles::after {
+  content: '';
+  position: fixed;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: torchFlicker 0.5s ease-in-out infinite alternate;
+}
+
+[data-theme="western"] .theme-particles::before {
+  top: 15%;
+  left: 4%;
+  background: #e88030;
+  box-shadow: 0 0 8px 2px rgba(232, 128, 48, 0.4);
+  animation-delay: 0s;
+}
+
+[data-theme="western"] .theme-particles::after {
+  top: 15%;
+  right: 4%;
+  background: #e88030;
+  box-shadow: 0 0 8px 2px rgba(232, 128, 48, 0.4);
+  animation-delay: 0.25s;
+}
+
+@keyframes torchFlicker {
+  0% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.3); }
+  100% { opacity: 0.7; transform: scale(0.9); }
+}
+
+/* Stone brick border */
+[data-theme="western"] .pixel-border {
+  border-image: repeating-linear-gradient(
+    90deg,
+    #8a6840 0px, #8a6840 8px,
+    #6a5030 8px, #6a5030 10px,
+    #9a7850 10px, #9a7850 16px,
+    #6a5030 16px, #6a5030 18px
+  ) 4;
+}
