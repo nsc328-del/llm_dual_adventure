@@ -93,7 +93,7 @@ export interface Scenario {
   worldLore: string;
   tone: string;
   openingPrompt: string;
-  characterTemplates: [CharacterTemplate, CharacterTemplate];
+  characterTemplates: CharacterTemplate[];
   defaultTheme: ThemeId;
   isPreset: boolean;
 }
