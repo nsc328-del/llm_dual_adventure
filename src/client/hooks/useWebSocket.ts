@@ -43,6 +43,14 @@ export function sendAsP2(type: string, payload: unknown) {
   wsSend(globalWsP2, type, payload);
 }
 
+export function disconnectP2() {
+  if (globalWsP2) {
+    wsSend(globalWsP2, 'leave_room', {});
+    globalWsP2.close();
+    globalWsP2 = null;
+  }
+}
+
 export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);

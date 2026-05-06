@@ -1,13 +1,23 @@
 import { useGameStore } from '../../stores/gameStore.js';
+import { useWS } from '../../App.js';
 import { StoryLog } from './StoryLog.js';
 import { ActionInput } from './ActionInput.js';
 import { PixelAvatar } from '../theme/PixelAvatar.js';
+import { disconnectP2 } from '../../hooks/useWebSocket.js';
 
 export function GameView() {
   const room = useGameStore(s => s.room);
   const gameState = useGameStore(s => s.gameState);
   const mySlot = useGameStore(s => s.mySlot);
   const isLocalMode = useGameStore(s => s.isLocalMode);
+  const reset = useGameStore(s => s.reset);
+  const { send } = useWS();
+
+  function leaveGame() {
+    if (isLocalMode) disconnectP2();
+    send('leave_room', {});
+    reset();
+  }
 
   if (!room || !gameState) {
     return (
@@ -29,6 +39,13 @@ export function GameView() {
         className="flex items-center justify-between px-4 py-2 shrink-0"
         style={{ borderBottom: '2px solid var(--theme-border)' }}
       >
+        <button
+          className="pixel-btn text-xs shrink-0 mr-2"
+          onClick={leaveGame}
+          title="离开游戏"
+        >
+          ←
+        </button>
         <PlayerBadge
           name={me?.character?.name ?? me?.displayName ?? '你'}
           avatarId={me?.character?.avatarId ?? 'warrior'}

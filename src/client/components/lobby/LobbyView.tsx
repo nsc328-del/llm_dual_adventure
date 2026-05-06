@@ -18,6 +18,9 @@ export function LobbyView() {
   const [roomName, setRoomName] = useState('');
   const [joinId, setJoinId] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showLocalSetup, setShowLocalSetup] = useState(false);
+  const [p1Name, setP1Name] = useState('');
+  const [p2Name, setP2Name] = useState('');
 
   const displayName = useGameStore(s => s.displayName);
   const setDisplayName = useGameStore(s => s.setDisplayName);
@@ -64,8 +67,9 @@ export function LobbyView() {
   }
 
   async function startLocal2P() {
-    const p1Name = displayName.trim() || '玩家一';
-    if (!displayName.trim()) setDisplayName(p1Name);
+    const name1 = p1Name.trim() || '玩家一';
+    const name2 = p2Name.trim() || '玩家二';
+    setDisplayName(name1);
     try {
       const res = await fetch('/api/rooms', {
         method: 'POST',
@@ -74,9 +78,9 @@ export function LobbyView() {
       });
       const room = await res.json();
       useGameStore.getState().setLocalMode(true);
-      send('join_room', { roomId: room.id, displayName: p1Name });
+      send('join_room', { roomId: room.id, displayName: name1 });
       await new Promise(r => setTimeout(r, 500));
-      await connectLocalP2(room.id, '玩家二');
+      await connectLocalP2(room.id, name2);
     } catch {
       // handle error
     }
@@ -96,7 +100,74 @@ export function LobbyView() {
         </p>
       </div>
 
-      {/* Display Name */}
+      {/* Local 2P setup */}
+      {showLocalSetup ? (
+        <div
+          className="pixel-border p-6 w-full max-w-sm"
+          style={{ background: 'var(--theme-bg-secondary)' }}
+        >
+          <h3
+            className="pixel-text text-xs mb-4"
+            style={{ color: 'var(--theme-accent)' }}
+          >
+            本地双人模式
+          </h3>
+          <div className="mb-3">
+            <label className="text-xs block mb-1" style={{ color: 'var(--theme-text-secondary)' }}>
+              玩家一
+            </label>
+            <input
+              className="pixel-input"
+              placeholder="输入玩家一名字..."
+              value={p1Name}
+              onChange={e => setP1Name(e.target.value)}
+            />
+          </div>
+          <div className="mb-4">
+            <label className="text-xs block mb-1" style={{ color: 'var(--theme-text-secondary)' }}>
+              玩家二
+            </label>
+            <input
+              className="pixel-input"
+              placeholder="输入玩家二名字..."
+              value={p2Name}
+              onChange={e => setP2Name(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              className="pixel-btn flex-1"
+              onClick={() => setShowLocalSetup(false)}
+            >
+              取消
+            </button>
+            <button
+              className="pixel-btn pixel-btn-primary flex-1"
+              onClick={startLocal2P}
+            >
+              开始冒险
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          className="pixel-btn pixel-btn-primary px-8 py-3 text-sm"
+          onClick={() => setShowLocalSetup(true)}
+        >
+          本地双人模式
+        </button>
+      )}
+
+      <div
+        className="flex items-center gap-3 w-full max-w-sm"
+        style={{ color: 'var(--theme-text-secondary)' }}
+      >
+        <div className="flex-1" style={{ borderTop: '1px solid var(--theme-border)' }} />
+        <span className="text-xs">联机</span>
+        <div className="flex-1" style={{ borderTop: '1px solid var(--theme-border)' }} />
+      </div>
+
+      {/* Online mode: name + create/join */}
       <div
         className="pixel-border p-4 w-full max-w-sm"
         style={{ background: 'var(--theme-bg-secondary)' }}
@@ -113,23 +184,6 @@ export function LobbyView() {
           value={displayName}
           onChange={e => setDisplayName(e.target.value)}
         />
-      </div>
-
-      {/* Local 2P */}
-      <button
-        className="pixel-btn pixel-btn-primary px-8 py-3 text-sm"
-        onClick={startLocal2P}
-      >
-        本地双人模式
-      </button>
-
-      <div
-        className="flex items-center gap-3 w-full max-w-sm"
-        style={{ color: 'var(--theme-text-secondary)' }}
-      >
-        <div className="flex-1" style={{ borderTop: '1px solid var(--theme-border)' }} />
-        <span className="text-xs">或</span>
-        <div className="flex-1" style={{ borderTop: '1px solid var(--theme-border)' }} />
       </div>
 
       <div className="flex gap-8 flex-wrap justify-center">
@@ -231,13 +285,25 @@ export function LobbyView() {
                     ({room.player_count}/2)
                   </span>
                 </div>
-                <button
-                  className="pixel-btn text-xs"
-                  onClick={() => joinRoom(room.id)}
-                  disabled={room.player_count >= 2}
-                >
-                  {room.player_count >= 2 ? '已满' : '加入'}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    className="pixel-btn text-xs"
+                    onClick={() => joinRoom(room.id)}
+                    disabled={room.player_count >= 2}
+                  >
+                    {room.player_count >= 2 ? '已满' : '加入'}
+                  </button>
+                  <button
+                    className="pixel-btn text-xs"
+                    onClick={async () => {
+                      await fetch(`/api/rooms/${room.id}`, { method: 'DELETE' });
+                      fetchRooms();
+                    }}
+                    style={{ color: '#ef4444', borderColor: '#ef4444' }}
+                  >
+                    删除
+                  </button>
+                </div>
               </div>
             ))}
           </div>

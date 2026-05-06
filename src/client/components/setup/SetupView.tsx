@@ -4,7 +4,7 @@ import { PixelAvatar } from '../theme/PixelAvatar.js';
 import { ScenarioPicker } from './ScenarioPicker.js';
 import { CharacterEditor } from './CharacterEditor.js';
 import { LLMConfigPanel } from './LLMConfigPanel.js';
-import { sendAsP2 } from '../../hooks/useWebSocket.js';
+import { sendAsP2, disconnectP2 } from '../../hooks/useWebSocket.js';
 
 export function SetupView() {
   const room = useGameStore(s => s.room);
@@ -12,9 +12,16 @@ export function SetupView() {
   const scenario = useGameStore(s => s.scenario);
   const isLocalMode = useGameStore(s => s.isLocalMode);
   const llmConfig = useGameStore(s => s.llmConfig);
+  const reset = useGameStore(s => s.reset);
   const { send } = useWS();
 
   if (!room) return null;
+
+  function leaveRoom() {
+    if (isLocalMode) disconnectP2();
+    send('leave_room', {});
+    reset();
+  }
 
   const me = room.players.find(p => p.slot === mySlot);
   const opponent = room.players.find(p => p.slot !== mySlot);
@@ -28,6 +35,12 @@ export function SetupView() {
     <div className="flex-1 flex flex-col items-center p-6 gap-6 overflow-y-auto">
       {/* Room header */}
       <div className="text-center">
+        <button
+          className="pixel-btn text-xs mb-3"
+          onClick={leaveRoom}
+        >
+          ← 返回大厅
+        </button>
         <h2
           className="pixel-text text-sm mb-1"
           style={{ color: 'var(--theme-accent)' }}

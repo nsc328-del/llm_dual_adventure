@@ -8,7 +8,7 @@ export async function roomRoutes(app: FastifyInstance) {
     const rows = db.prepare(
       `SELECT r.*, COUNT(p.id) as player_count
        FROM rooms r LEFT JOIN players p ON p.room_id = r.id
-       WHERE r.status IN ('waiting', 'setup')
+       WHERE r.status IN ('waiting', 'setup', 'playing')
        GROUP BY r.id
        ORDER BY r.created_at DESC`
     ).all();
@@ -29,5 +29,15 @@ export async function roomRoutes(app: FastifyInstance) {
     if (!room) return reply.code(404).send({ error: 'Room not found' });
     const players = db.prepare('SELECT * FROM players WHERE room_id = ?').all(req.params.id);
     return { ...room, players };
+  });
+
+  app.delete<{ Params: { id: string } }>('/api/rooms/:id', async (req, reply) => {
+    const db = getDb();
+    const room = db.prepare('SELECT * FROM rooms WHERE id = ?').get(req.params.id);
+    if (!room) return reply.code(404).send({ error: 'Room not found' });
+    db.prepare('DELETE FROM game_states WHERE room_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM players WHERE room_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM rooms WHERE id = ?').run(req.params.id);
+    return { ok: true };
   });
 }

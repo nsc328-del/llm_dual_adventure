@@ -24,6 +24,33 @@
       "suggestedAppearance": "穿着以树叶和藤蔓编织的长袍，手持木制法杖，顶端镶嵌着一颗发光的翠绿宝石。",
       "suggestedAvatarId": "mage",
       "role": "治愈与自然魔法"
+    },
+    {
+      "name": "森林守卫",
+      "description": "守护古林边境的精灵族战士",
+      "suggestedTraits": ["忠诚", "沉默寡言", "嗅觉灵敏"],
+      "suggestedBackstory": "精灵族中最年轻的边境守卫，曾在暗影生物的夜袭中独自守住哨站一整夜。因目睹同伴被暗影吞噬，发誓要亲手斩断黑暗的根源。",
+      "suggestedAppearance": "身形矫健，尖耳上佩戴翠叶耳环。穿着以树皮和银丝编织的轻甲，手持一柄散发微光的月刃弯刀，脚步轻盈如落叶。",
+      "suggestedAvatarId": "warrior",
+      "role": "近战与巡逻守卫"
+    },
+    {
+      "name": "药草猎人",
+      "description": "精通森林药草与毒物的炼药师",
+      "suggestedTraits": ["细心", "独立", "话少但毒舌"],
+      "suggestedBackstory": "原本是人类王国的宫廷药剂师，因拒绝为权贵炼制禁药而被通缉。逃入翡翠之森后，跟随森林中的蘑菇精灵学会了失传的古法炼药术。",
+      "suggestedAppearance": "背着一个比自己还高的药草采集架，上面挂满各色瓶瓶罐罐。戴着防毒面具（通常推到头顶），指尖常年被各种药液染成斑斓的颜色。",
+      "suggestedAvatarId": "alchemist",
+      "role": "炼药与状态辅助"
+    },
+    {
+      "name": "影步行者",
+      "description": "穿梭于林间暗影的刺客",
+      "suggestedTraits": ["机警", "果断", "重义气"],
+      "suggestedBackstory": "盗贼公会的前任杀手，在一次暗杀精灵长老的任务中反被对方的慈悲感化，背叛公会投身森林。如今以影步之术暗中清除入侵古林的邪恶势力。",
+      "suggestedAppearance": "全身裹着与林影融为一体的深灰色披风，面容被兜帽遮挡只露出锐利的双眼。双手各持一把由暗铁锻造的短匕，靴底刻有消音符文。",
+      "suggestedAvatarId": "rogue",
+      "role": "潜行暗杀与陷阱侦测"
     }
   ],
   "defaultTheme": "forest"
