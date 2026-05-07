@@ -6,6 +6,8 @@ import { broadcastAll, getRoomClients, sendTo } from '../ws/broadcast.js';
 import { REVIEW_INTERVAL, DEFAULT_GEN_PARAMS } from '../../shared/constants.js';
 import type { GameState, StoryEntry, Scenario, PlayerInfo, LLMConfig, GenerationParams } from '../../shared/types.js';
 
+const generatingRooms = new Set<string>();
+
 export function parseSuggestions(content: string): { narration: string; suggestions: string[] } {
   const idx = content.indexOf('---SUGGESTIONS---');
   if (idx === -1) return { narration: content.trim(), suggestions: [] };
@@ -20,11 +22,23 @@ export function parseSuggestions(content: string): { narration: string; suggesti
   return { narration, suggestions };
 }
 
+export function parseDirections(content: string): { review: string; directions: string[] } {
+  const idx = content.indexOf('---DIRECTIONS---');
+  if (idx === -1) return { review: content.trim(), directions: [] };
+  const review = content.slice(0, idx).trim();
+  const directionsRaw = content.slice(idx + '---DIRECTIONS---'.length).trim();
+  const directions = directionsRaw
+    .split('\n')
+    .map(line => line.replace(/^\d+\.\s*/, '').trim())
+    .filter(Boolean);
+  return { review, directions };
+}
+
 function getGameState(roomId: string): GameState | null {
   const db = getDb();
   const row = db.prepare('SELECT * FROM game_states WHERE room_id = ?').get(roomId) as any;
   if (!row) return null;
-  return {
+  const state: GameState = {
     roomId: row.room_id,
     currentTurn: row.current_turn,
     activePlayer: row.active_player,
@@ -33,13 +47,17 @@ function getGameState(roomId: string): GameState | null {
     systemPrompt: row.system_prompt,
     status: row.status,
   };
+  if (row.direction_votes) state.directionVotes = JSON.parse(row.direction_votes);
+  if (row.voted_players) state.votedPlayers = JSON.parse(row.voted_players);
+  if (row.pending_directions) state.pendingDirections = JSON.parse(row.pending_directions);
+  return state;
 }
 
 function saveGameState(state: GameState) {
   const db = getDb();
   db.prepare(
-    `INSERT OR REPLACE INTO game_states (room_id, current_turn, active_player, story_log, generation_params, system_prompt, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+    `INSERT OR REPLACE INTO game_states (room_id, current_turn, active_player, story_log, generation_params, system_prompt, status, direction_votes, voted_players, pending_directions)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     state.roomId,
     state.currentTurn,
@@ -48,6 +66,9 @@ function saveGameState(state: GameState) {
     JSON.stringify(state.generationParams),
     state.systemPrompt,
     state.status,
+    state.directionVotes ? JSON.stringify(state.directionVotes) : null,
+    state.votedPlayers ? JSON.stringify(state.votedPlayers) : null,
+    state.pendingDirections ? JSON.stringify(state.pendingDirections) : null,
   );
 }
 
@@ -128,6 +149,7 @@ export async function processAction(
   const state = getGameState(roomId);
   if (!state || state.status !== 'playing') return;
   if (state.activePlayer !== playerSlot) return;
+  if (generatingRooms.has(roomId)) return;
 
   const players = getPlayers(roomId);
 
@@ -180,47 +202,31 @@ async function streamNarration(
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
   entryType: 'narration' | 'review' | 'finale',
 ) {
-  const adapter = getAdapter(config);
-  let fullContent = '';
-
+  if (generatingRooms.has(roomId)) return;
+  generatingRooms.add(roomId);
   try {
-    if (state.generationParams.stream) {
-      const gen = adapter.generateStream(messages, config, state.generationParams);
-      let result;
+    const adapter = getAdapter(config);
+    let fullContent = '';
 
-      while (true) {
-        result = await gen.next();
-        if (result.done) break;
-        const chunk = result.value as string;
-        fullContent += chunk;
-        broadcastAll(roomId, 'narration_stream', { chunk });
-      }
-    } else {
-      const response = await adapter.generate(messages, config, state.generationParams);
-      fullContent = response.content;
-    }
-
-    const { narration, suggestions } = parseSuggestions(fullContent);
-
-    const entry: StoryEntry = {
-      id: nanoid(8),
-      type: entryType,
-      content: narration,
-      suggestions,
-      turnNumber: state.currentTurn,
-      timestamp: new Date().toISOString(),
-    };
-
-    state.storyLog.push(entry);
-    saveGameState(state);
-
-    broadcastAll(roomId, 'narration_complete', { entry });
-  } catch (err: any) {
-    // Retry once on failure
     try {
-      const retryResponse = await adapter.generate(messages, config, state.generationParams);
-      fullContent = retryResponse.content;
+      if (state.generationParams.stream) {
+        const gen = adapter.generateStream(messages, config, state.generationParams);
+        let result;
+
+        while (true) {
+          result = await gen.next();
+          if (result.done) break;
+          const chunk = result.value as string;
+          fullContent += chunk;
+          broadcastAll(roomId, 'narration_stream', { chunk });
+        }
+      } else {
+        const response = await adapter.generate(messages, config, state.generationParams);
+        fullContent = response.content;
+      }
+
       const { narration, suggestions } = parseSuggestions(fullContent);
+
       const entry: StoryEntry = {
         id: nanoid(8),
         type: entryType,
@@ -229,16 +235,38 @@ async function streamNarration(
         turnNumber: state.currentTurn,
         timestamp: new Date().toISOString(),
       };
+
       state.storyLog.push(entry);
       saveGameState(state);
+
       broadcastAll(roomId, 'narration_complete', { entry });
-      return;
-    } catch {
-      // retry also failed
+    } catch (err: any) {
+      // Retry once on failure
+      try {
+        const retryResponse = await adapter.generate(messages, config, state.generationParams);
+        fullContent = retryResponse.content;
+        const { narration, suggestions } = parseSuggestions(fullContent);
+        const entry: StoryEntry = {
+          id: nanoid(8),
+          type: entryType,
+          content: narration,
+          suggestions,
+          turnNumber: state.currentTurn,
+          timestamp: new Date().toISOString(),
+        };
+        state.storyLog.push(entry);
+        saveGameState(state);
+        broadcastAll(roomId, 'narration_complete', { entry });
+        return;
+      } catch {
+        // retry also failed
+      }
+      broadcastAll(roomId, 'generation_error', {
+        message: err.message || 'LLM generation failed',
+      });
     }
-    broadcastAll(roomId, 'generation_error', {
-      message: err.message || 'LLM generation failed',
-    });
+  } finally {
+    generatingRooms.delete(roomId);
   }
 }
 
@@ -253,18 +281,32 @@ async function triggerReview(
 
   try {
     const response = await adapter.generate(reviewMessages, config, state.generationParams);
+    const { review, directions } = parseDirections(response.content);
+
     const reviewEntry: StoryEntry = {
       id: nanoid(8),
       type: 'review',
-      content: response.content,
+      content: review,
+      suggestions: directions.length > 0 ? directions : undefined,
       turnNumber: state.currentTurn,
       timestamp: new Date().toISOString(),
     };
 
     state.storyLog.push(reviewEntry);
+
+    if (directions.length > 0) {
+      state.pendingDirections = directions;
+      state.directionVotes = {};
+      state.votedPlayers = [];
+    }
+
     saveGameState(state);
 
     broadcastAll(roomId, 'review_triggered', { entry: reviewEntry, turn: state.currentTurn });
+
+    if (directions.length > 0) {
+      broadcastAll(roomId, 'directions_pending', { directions });
+    }
   } catch {
     // review is non-critical, silently skip
   }
@@ -322,4 +364,55 @@ export function updateSystemPrompt(roomId: string, prompt: string) {
   if (!state) return;
   state.systemPrompt = prompt;
   saveGameState(state);
+}
+
+export function handleVoteDirection(roomId: string, playerSlot: 1 | 2, direction: string): void {
+  const state = getGameState(roomId);
+  if (!state) return;
+  if (!state.pendingDirections || state.pendingDirections.length === 0) return;
+  if (state.votedPlayers?.includes(playerSlot)) return;
+
+  if (!state.directionVotes) state.directionVotes = {};
+  if (!state.votedPlayers) state.votedPlayers = [];
+
+  state.directionVotes[direction] = (state.directionVotes[direction] || 0) + 1;
+  state.votedPlayers.push(playerSlot);
+  saveGameState(state);
+
+  if (state.votedPlayers.length >= 2) {
+    // Both players have voted - resolve the direction
+    let chosenDirection = direction;
+    const votes = state.directionVotes;
+    const entries = Object.entries(votes);
+    entries.sort((a, b) => b[1] - a[1]);
+
+    if (entries.length === 1) {
+      // Both voted for the same direction
+      chosenDirection = entries[0][0];
+    } else if (entries[0][1] === entries[1][1]) {
+      // Tie - randomly pick one
+      const tiedDirections = entries.filter(e => e[1] === entries[0][1]).map(e => e[0]);
+      chosenDirection = tiedDirections[Math.floor(Math.random() * tiedDirections.length)];
+    } else {
+      chosenDirection = entries[0][0];
+    }
+
+    // Add system entry for the chosen direction
+    const systemEntry: StoryEntry = {
+      id: nanoid(8),
+      type: 'system',
+      content: `故事方向: ${chosenDirection}`,
+      turnNumber: state.currentTurn,
+      timestamp: new Date().toISOString(),
+    };
+    state.storyLog.push(systemEntry);
+
+    // Clear voting state
+    state.pendingDirections = undefined;
+    state.directionVotes = undefined;
+    state.votedPlayers = undefined;
+    saveGameState(state);
+
+    broadcastAll(roomId, 'direction_resolved', { direction: chosenDirection });
+  }
 }

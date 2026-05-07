@@ -35,6 +35,18 @@ export function runMigrations(): void {
   }
   // Fix legacy local rooms created before is_local flag
   database.exec("UPDATE rooms SET is_local = 1 WHERE name = '本地对战' AND is_local = 0");
+
+  // Direction voting columns for game_states
+  const gsCols = database.prepare("PRAGMA table_info(game_states)").all() as any[];
+  if (!gsCols.some((c: any) => c.name === 'direction_votes')) {
+    database.exec("ALTER TABLE game_states ADD COLUMN direction_votes TEXT");
+  }
+  if (!gsCols.some((c: any) => c.name === 'voted_players')) {
+    database.exec("ALTER TABLE game_states ADD COLUMN voted_players TEXT");
+  }
+  if (!gsCols.some((c: any) => c.name === 'pending_directions')) {
+    database.exec("ALTER TABLE game_states ADD COLUMN pending_directions TEXT");
+  }
 }
 
 export function closeDb(): void {

@@ -53,6 +53,10 @@ const submitActionPayload = z.object({
   action: z.string().min(1).max(2000),
 });
 
+const voteDirectionPayload = z.object({
+  direction: z.string().min(1),
+});
+
 const clientMessageSchema = z.object({
   type: z.string(),
   payload: z.unknown(),
@@ -68,6 +72,7 @@ export const payloadSchemas: Record<string, z.ZodType> = {
   update_gen_params: updateGenParamsPayload,
   update_system_prompt: updateSystemPromptPayload,
   submit_action: submitActionPayload,
+  vote_direction: voteDirectionPayload,
 };
 
 export { clientMessageSchema };

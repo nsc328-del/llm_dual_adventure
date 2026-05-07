@@ -54,10 +54,22 @@ export function ActionInput() {
 
   if (gameStatus === 'finished' || gameStatus === 'finale') {
     return (
-      <div className="p-4 text-center" style={{ borderTop: '2px solid var(--theme-border)' }}>
+      <div className="p-4 text-center flex flex-col items-center gap-3" style={{ borderTop: '2px solid var(--theme-border)' }}>
         <span className="pixel-text text-xs" style={{ color: 'var(--theme-accent)' }}>
           {gameStatus === 'finale' ? '尾声生成中...' : '冒险已结束'}
         </span>
+        {gameStatus === 'finished' && (
+          <button
+            className="pixel-btn pixel-btn-primary text-xs"
+            onClick={() => {
+              const { setArchiveRoom } = useGameStore.getState();
+              const roomId = useGameStore.getState().room?.id;
+              if (roomId) setArchiveRoom(roomId);
+            }}
+          >
+            查看故事回顾
+          </button>
+        )}
       </div>
     );
   }

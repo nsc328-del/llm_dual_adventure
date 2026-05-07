@@ -506,3 +506,103 @@ body.theme-transitioning *::after {
 .loading-dots .d1, .loading-dots .d2, .loading-dots .d3 { animation: loadingDot1 1.4s step-end infinite; }
 .loading-dots .d2 { animation-name: loadingDot2; }
 .loading-dots .d3 { animation-name: loadingDot3; }
+
+/* ===== MOBILE RESPONSIVE ===== */
+
+@media (max-width: 768px) {
+  /* Reduce pixel borders on small screens */
+  :root {
+    --theme-pixel-size: 2px;
+  }
+
+  .pixel-text {
+    font-size: 10px;
+  }
+
+  .pixel-btn {
+    font-size: 9px;
+    padding: 6px 10px;
+  }
+
+  .pixel-input {
+    font-size: 13px;
+    padding: 6px 10px;
+  }
+
+  /* Lobby: stack the two sections vertically */
+  .lobby-columns {
+    flex-direction: column !important;
+  }
+
+  .lobby-columns > * {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Setup: stack character editors */
+  .setup-editors {
+    flex-direction: column !important;
+  }
+
+  .setup-editors > * {
+    min-width: 0 !important;
+  }
+
+  /* Scenario grid single column */
+  .scenario-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Game view: smaller top bar */
+  .game-topbar {
+    padding: 4px 8px !important;
+  }
+
+  .game-topbar .pixel-text {
+    font-size: 9px;
+  }
+
+  /* Story entries take more width on mobile */
+  .story-action {
+    max-width: 92% !important;
+  }
+
+  .story-narration {
+    max-width: 100% !important;
+  }
+
+  /* Settings drawer full width on mobile */
+  .settings-drawer {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Scrollbar thinner on mobile */
+  ::-webkit-scrollbar { width: 6px; }
+
+  /* Header compact */
+  .app-header h1 {
+    font-size: 11px !important;
+  }
+
+  /* Hide avatar preview in lobby on small screens */
+  .avatar-preview {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --theme-pixel-size: 2px;
+  }
+
+  .pixel-btn {
+    font-size: 8px;
+    padding: 5px 8px;
+  }
+
+  /* Game player badges more compact */
+  .player-badge-name {
+    max-width: 80px;
+  }
+}

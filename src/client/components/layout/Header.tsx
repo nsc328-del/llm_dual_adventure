@@ -1,20 +1,22 @@
 import { useState } from 'react';
-import { useThemeContext } from '../../App.js';
+import { useThemeContext, useSoundContext } from '../../App.js';
 import { useGameStore } from '../../stores/gameStore.js';
 import { ThemeSwitcher } from '../theme/ThemeSwitcher.js';
 import { ConnectionStatus } from './ConnectionStatus.js';
+import { SoundToggle } from './SoundToggle.js';
 import { GenerationParamsPanel } from '../settings/GenerationParamsPanel.js';
 import { SystemPromptEditor } from '../settings/SystemPromptEditor.js';
 
 export function Header() {
   const [showSettings, setShowSettings] = useState(false);
   const { theme, setTheme } = useThemeContext();
+  const { isMuted, toggleMute } = useSoundContext();
   const phase = useGameStore(s => s.phase);
 
   return (
     <>
       <header
-        className="pixel-border flex items-center justify-between px-4 py-3 relative z-10"
+        className="app-header pixel-border flex items-center justify-between px-4 py-3 relative z-10"
         style={{ background: 'var(--theme-bg-secondary)' }}
       >
         <h1 className="pixel-text text-sm" style={{ color: 'var(--theme-accent)' }}>
@@ -22,6 +24,7 @@ export function Header() {
         </h1>
         <div className="flex items-center gap-2">
           <ConnectionStatus />
+          <SoundToggle isMuted={isMuted} onToggle={toggleMute} />
           <button
             className="pixel-btn text-xs"
             onClick={() => setShowSettings(!showSettings)}
@@ -39,7 +42,7 @@ export function Header() {
             onClick={() => setShowSettings(false)}
           />
           <div
-            className="fixed top-0 right-0 h-full w-80 max-w-[calc(100vw-1rem)] z-50 pixel-border p-4 overflow-y-auto flex flex-col gap-6"
+            className="settings-drawer fixed top-0 right-0 h-full w-80 max-w-[calc(100vw-1rem)] z-50 pixel-border p-4 overflow-y-auto flex flex-col gap-6"
             style={{ background: 'var(--theme-bg-secondary)' }}
           >
             <div className="flex items-center justify-between">

@@ -2,6 +2,7 @@ import ReactMarkdown from 'react-markdown';
 import type { StoryEntry as StoryEntryType } from '@shared/types.js';
 import { PixelAvatar } from '../theme/PixelAvatar.js';
 import { useGameStore } from '../../stores/gameStore.js';
+import { useWS } from '../../App.js';
 
 interface StoryEntryProps {
   entry: StoryEntryType;
@@ -10,6 +11,10 @@ interface StoryEntryProps {
 export function StoryEntryView({ entry }: StoryEntryProps) {
   const room = useGameStore(s => s.room);
   const mySlot = useGameStore(s => s.mySlot);
+  const pendingDirections = useGameStore(s => s.pendingDirections);
+  const votedDirection = useGameStore(s => s.votedDirection);
+  const resolvedDirection = useGameStore(s => s.resolvedDirection);
+  const { send } = useWS();
 
   if (entry.type === 'system') {
     return (
@@ -22,6 +27,16 @@ export function StoryEntryView({ entry }: StoryEntryProps) {
   }
 
   if (entry.type === 'review') {
+    const directions = entry.suggestions ?? [];
+    const hasDirections = directions.length > 0;
+    const hasVoted = votedDirection !== null;
+    const isResolved = resolvedDirection !== null;
+
+    function handleVoteDirection(direction: string) {
+      useGameStore.setState({ votedDirection: direction });
+      send('vote_direction', { direction });
+    }
+
     return (
       <div
         className="story-entry-appear mx-auto max-w-lg my-4 p-4 text-center"
@@ -37,6 +52,45 @@ export function StoryEntryView({ entry }: StoryEntryProps) {
         <p className="text-sm" style={{ color: 'var(--theme-text-secondary)' }}>
           {entry.content}
         </p>
+
+        {hasDirections && (
+          <div className="mt-3 pt-3" style={{ borderTop: '1px dashed var(--theme-border)' }}>
+            <span className="pixel-text text-xs block mb-2" style={{ color: 'var(--theme-accent)' }}>
+              {isResolved ? '故事方向已决定' : hasVoted ? '等待对方投票...' : '投票选择故事方向'}
+            </span>
+            <div className="flex flex-col gap-2 items-center">
+              {directions.map((dir, i) => {
+                const isChosen = resolvedDirection === dir;
+                const isMyVote = votedDirection === dir;
+                const canVote = !hasVoted && !isResolved && pendingDirections !== null;
+
+                return (
+                  <button
+                    key={i}
+                    className="pixel-btn text-xs px-4 py-2 w-full max-w-sm"
+                    onClick={() => canVote && handleVoteDirection(dir)}
+                    disabled={!canVote}
+                    style={{
+                      opacity: isResolved ? (isChosen ? 1 : 0.4) : (hasVoted ? (isMyVote ? 1 : 0.5) : 1),
+                      background: isChosen
+                        ? 'var(--theme-accent)'
+                        : isMyVote
+                          ? 'var(--theme-surface)'
+                          : undefined,
+                      color: isChosen ? 'var(--theme-bg)' : undefined,
+                      border: isMyVote && !isResolved ? '2px solid var(--theme-accent)' : undefined,
+                      cursor: canVote ? 'pointer' : 'default',
+                    }}
+                  >
+                    {isMyVote && !isResolved && '✓ '}
+                    {isChosen && '★ '}
+                    {dir}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

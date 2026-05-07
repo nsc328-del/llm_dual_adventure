@@ -72,7 +72,7 @@ export function ScenarioPicker({ currentScenarioId }: { currentScenarioId: strin
       >
         选择场景
       </h3>
-      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+      <div className="scenario-grid grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
         {scenarios.map(s => {
           const isSelected = s.id === currentScenarioId;
           const themeDef = THEMES.find(t => t.id === s.defaultTheme);

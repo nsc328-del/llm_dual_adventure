@@ -5,7 +5,7 @@ import { getDb } from '../db/connection.js';
 import { addClient, removeClient, getRoomClients, sendTo, broadcastAll, type RoomClient } from './broadcast.js';
 import type { ClientMessage } from '../../shared/ws-types.js';
 import type { PlayerInfo, Room } from '../../shared/types.js';
-import { startGame, processAction, triggerFinale, updateGenParams, updateSystemPrompt } from '../game/engine.js';
+import { startGame, processAction, triggerFinale, updateGenParams, updateSystemPrompt, handleVoteDirection } from '../game/engine.js';
 import { payloadSchemas } from '../../shared/schemas.js';
 
 interface ClientState {
@@ -77,6 +77,9 @@ function handleMessage(state: ClientState, msg: ClientMessage) {
       break;
     case 'vote_finale':
       handleVoteFinale(state);
+      break;
+    case 'vote_direction':
+      handleVoteDirectionMsg(state, msg.payload);
       break;
     case 'update_gen_params':
       handleUpdateGenParams(state, msg.payload);
@@ -257,6 +260,11 @@ function handleUpdateGenParams(state: ClientState, payload: { params: any }) {
 function handleUpdateSystemPrompt(state: ClientState, payload: { prompt: string }) {
   if (!state.roomId) return;
   updateSystemPrompt(state.roomId, payload.prompt);
+}
+
+function handleVoteDirectionMsg(state: ClientState, payload: { direction: string }) {
+  if (!state.roomId || !state.slot) return;
+  handleVoteDirection(state.roomId, state.slot, payload.direction);
 }
 
 function sendRoomState(state: ClientState) {

@@ -19,6 +19,16 @@ interface GameStore {
   isGenerating: boolean;
   streamBuffer: string;
 
+  // Direction voting
+  pendingDirections: string[] | null;
+  votedDirection: string | null;
+  resolvedDirection: string | null;
+
+  // Archive
+  archiveRoomId: string | null;
+  setArchiveRoom: (roomId: string) => void;
+  clearArchive: () => void;
+
   // Errors
   error: string | null;
   clearError: () => void;
@@ -50,6 +60,8 @@ interface GameStore {
   handleNarrationComplete: (entry: StoryEntry) => void;
   handleReviewTriggered: (entry: StoryEntry, turn: number) => void;
   handleGenParamsUpdated: (params: GenerationParams) => void;
+  handleDirectionsPending: (directions: string[]) => void;
+  handleDirectionResolved: (direction: string) => void;
   handleFinaleStarted: () => void;
   handleFinaleComplete: (gameState: GameState) => void;
   handleGenerationError: (message: string) => void;
@@ -57,12 +69,20 @@ interface GameStore {
   reset: () => void;
 }
 
-const INITIAL_LLM_CONFIG: LLMConfig = {
-  provider: 'openai',
-  baseUrl: 'https://api.openai.com/v1',
-  apiKey: '',
-  model: 'mimo-v2.5-pro',
-};
+function loadLLMConfig(): LLMConfig {
+  try {
+    const saved = localStorage.getItem('llm_config');
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return {
+    provider: 'openai',
+    baseUrl: 'https://api.openai.com/v1',
+    apiKey: '',
+    model: 'mimo-v2.5-pro',
+  };
+}
+
+const INITIAL_LLM_CONFIG: LLMConfig = loadLLMConfig();
 
 export const useGameStore = create<GameStore>((set, get) => ({
   phase: 'lobby',
@@ -75,6 +95,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isGenerating: false,
   streamBuffer: '',
   error: null,
+  pendingDirections: null,
+  votedDirection: null,
+  resolvedDirection: null,
+  archiveRoomId: null,
   isLocalMode: false,
   displayName: '',
   llmConfig: INITIAL_LLM_CONFIG,
@@ -82,8 +106,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setPhase: (phase) => set({ phase }),
   setConnected: (connected) => set({ connected }),
   setDisplayName: (name) => set({ displayName: name }),
-  setLLMConfig: (config) => set({ llmConfig: config }),
+  setLLMConfig: (config) => {
+    set({ llmConfig: config });
+    try { localStorage.setItem('llm_config', JSON.stringify(config)); } catch {}
+  },
   clearError: () => set({ error: null }),
+  setArchiveRoom: (roomId) => set({ archiveRoomId: roomId }),
+  clearArchive: () => set({ archiveRoomId: null }),
   setLocalMode: (v) => set({ isLocalMode: v }),
 
   handleRoomState: (data) => {
@@ -95,6 +124,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       playerId: data.playerId,
       mySlot: data.slot,
       phase,
+      pendingDirections: data.gameState?.pendingDirections ?? null,
+      votedDirection: null,
+      resolvedDirection: null,
     });
     sessionStorage.setItem('playerId', data.playerId);
     sessionStorage.setItem('roomId', data.room.id);
@@ -217,6 +249,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
+  handleDirectionsPending: (directions) => {
+    set({ pendingDirections: directions, votedDirection: null, resolvedDirection: null });
+  },
+
+  handleDirectionResolved: (direction) => {
+    set({ pendingDirections: null, votedDirection: null, resolvedDirection: direction });
+    // Clear resolved direction after a delay so the UI can show it briefly
+    setTimeout(() => {
+      useGameStore.setState({ resolvedDirection: null });
+    }, 5000);
+  },
+
   handleFinaleStarted: () => {
     set({ isGenerating: true, streamBuffer: '' });
   },
@@ -242,6 +286,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       gameState: null,
       isGenerating: false,
       streamBuffer: '',
+      pendingDirections: null,
+      votedDirection: null,
+      resolvedDirection: null,
     });
   },
 }));

@@ -59,6 +59,8 @@ export function buildMessages(
       const player = players.find(p => p.slot === entry.playerSlot);
       const name = player?.character?.name ?? player?.displayName ?? `玩家${entry.playerSlot}`;
       messages.push({ role: 'user', content: `[${name}的行动] ${entry.content}` });
+    } else if (entry.type === 'system') {
+      messages.push({ role: 'user', content: `[系统] ${entry.content}` });
     }
   }
 
@@ -105,7 +107,14 @@ export function buildReviewMessages(
 
   messages.push({
     role: 'user',
-    content: `以下是到目前为止的完整故事（第${currentTurn}回合）。请回顾故事的整体进展，给出一段简短的回顾性叙事（50-100字），总结故事的关键进展和当前局势。不需要提供建议行动。
+    content: `以下是到目前为止的完整故事（第${currentTurn}回合）。请回顾故事的整体进展，给出一段简短的回顾性叙事（50-100字），总结故事的关键进展和当前局势。
+
+然后，请在回顾内容之后提出2-3个可能的故事发展方向供玩家投票选择。请使用以下格式：
+
+---DIRECTIONS---
+1. [方向标题] — [简短描述]
+2. [方向标题] — [简短描述]
+3. [方向标题] — [简短描述]
 
 ${summary}`,
   });

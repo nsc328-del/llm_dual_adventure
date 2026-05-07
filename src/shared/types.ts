@@ -50,6 +50,9 @@ export interface GameState {
   generationParams: GenerationParams;
   systemPrompt: string;
   status: GameStatus;
+  directionVotes?: Record<string, number>;
+  votedPlayers?: (1 | 2)[];
+  pendingDirections?: string[];
 }
 
 export type RoomStatus = 'waiting' | 'setup' | 'playing' | 'finished';

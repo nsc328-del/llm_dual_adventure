@@ -36,7 +36,7 @@ export function GameView() {
     <div className="flex-1 flex flex-col min-h-0">
       {/* Top bar with player info */}
       <div
-        className="flex items-center justify-between px-4 py-2 shrink-0"
+        className="game-topbar flex items-center justify-between px-4 py-2 shrink-0"
         style={{ borderBottom: '2px solid var(--theme-border)' }}
       >
         <button

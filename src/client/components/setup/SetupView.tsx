@@ -88,7 +88,7 @@ export function SetupView() {
 
           {/* Character + LLM config */}
           {scenario && (
-            <div className="flex gap-4 flex-wrap justify-center w-full max-w-2xl">
+            <div className="setup-editors flex gap-4 flex-wrap justify-center w-full max-w-2xl">
               <div className="flex-1 min-w-[280px]">
                 <CharacterEditor
                   template={myTemplate}
@@ -125,13 +125,13 @@ export function SetupView() {
             <div className="w-full max-w-md text-center">
               <button
                 className="pixel-btn pixel-btn-primary w-full text-sm py-3"
-                onClick={() => {
+                onClick={async () => {
                   if (isLocalMode) {
                     sendAsP2('update_llm_config', { config: llmConfig });
-                    setTimeout(() => {
-                      send('ready', {});
-                      setTimeout(() => sendAsP2('ready', {}), 300);
-                    }, 300);
+                    await new Promise(r => setTimeout(r, 200));
+                    send('ready', {});
+                    await new Promise(r => setTimeout(r, 200));
+                    sendAsP2('ready', {});
                   } else {
                     send('ready', {});
                   }

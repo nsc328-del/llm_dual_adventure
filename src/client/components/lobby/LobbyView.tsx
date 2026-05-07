@@ -5,6 +5,10 @@ import { useWS } from '../../App.js';
 import { useGameStore } from '../../stores/gameStore.js';
 import { connectLocalP2 } from '../../hooks/useWebSocket.js';
 
+function isRoomFinished(room: RoomSummary) {
+  return room.status === 'finished';
+}
+
 interface RoomSummary {
   id: string;
   name: string;
@@ -18,6 +22,7 @@ export function LobbyView() {
   const [localRooms, setLocalRooms] = useState<RoomSummary[]>([]);
   const [onlineRooms, setOnlineRooms] = useState<RoomSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Local 2P
   const [showLocalSetup, setShowLocalSetup] = useState(false);
@@ -37,6 +42,7 @@ export function LobbyView() {
   useEffect(() => { fetchRooms(); }, []);
 
   async function fetchRooms() {
+    setError(null);
     try {
       const [localRes, onlineRes] = await Promise.all([
         fetch('/api/rooms?local=1'),
@@ -45,13 +51,14 @@ export function LobbyView() {
       setLocalRooms(await localRes.json());
       setOnlineRooms(await onlineRes.json());
     } catch {
-      // server not ready
+      setError('加载房间列表失败');
     } finally {
       setLoading(false);
     }
   }
 
   async function startLocal2P() {
+    setError(null);
     const name1 = p1Name.trim() || '玩家一';
     const name2 = p2Name.trim() || '玩家二';
     setDisplayName(name1);
@@ -67,11 +74,12 @@ export function LobbyView() {
       await new Promise(r => setTimeout(r, 500));
       await connectLocalP2(room.id, name2);
     } catch {
-      // handle error
+      setError('创建本地对局失败');
     }
   }
 
   async function continueLocalRoom(room: RoomSummary) {
+    setError(null);
     try {
       const res = await fetch(`/api/rooms/${room.id}`);
       const data = await res.json();
@@ -94,7 +102,7 @@ export function LobbyView() {
         p2?.id,
       );
     } catch {
-      // handle error
+      setError('继续游戏失败');
     }
   }
 
@@ -115,6 +123,7 @@ export function LobbyView() {
   }
 
   async function createAndJoin() {
+    setError(null);
     if (!roomName.trim()) return;
     const name = displayName.trim() || '冒险者';
     try {
@@ -127,7 +136,7 @@ export function LobbyView() {
       if (!displayName.trim()) setDisplayName(name);
       send('join_room', { roomId: room.id, displayName: name });
     } catch {
-      // handle error
+      setError('创建房间失败');
     }
   }
 
@@ -148,7 +157,7 @@ export function LobbyView() {
   }
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 gap-8">
+    <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8 gap-6 md:gap-8">
       <div className="text-center mb-2">
         <h2
           className="pixel-text text-lg mb-2"
@@ -161,7 +170,17 @@ export function LobbyView() {
         </p>
       </div>
 
-      <div className="flex gap-8 flex-wrap justify-center w-full max-w-3xl">
+      {error && (
+        <div
+          className="pixel-border-thin p-3 text-center text-xs w-full max-w-3xl"
+          style={{ background: 'rgba(255,60,60,0.1)', borderColor: '#ff3c3c', color: '#ff3c3c' }}
+        >
+          {error}
+          <button className="ml-3 underline" onClick={() => setError(null)}>关闭</button>
+        </div>
+      )}
+
+      <div className="lobby-columns flex gap-4 md:gap-8 flex-wrap justify-center w-full max-w-3xl">
         {/* ─── Section 1: 本地对战 ─── */}
         <div
           className="pixel-border p-6 flex-1 min-w-[320px]"
@@ -268,12 +287,21 @@ export function LobbyView() {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <button
-                        className="pixel-btn pixel-btn-primary text-xs flex-1"
-                        onClick={() => continueLocalRoom(room)}
-                      >
-                        继续游戏
-                      </button>
+                      {isRoomFinished(room) ? (
+                        <button
+                          className="pixel-btn pixel-btn-primary text-xs flex-1"
+                          onClick={() => useGameStore.getState().setArchiveRoom(room.id)}
+                        >
+                          故事回顾
+                        </button>
+                      ) : (
+                        <button
+                          className="pixel-btn pixel-btn-primary text-xs flex-1"
+                          onClick={() => continueLocalRoom(room)}
+                        >
+                          继续游戏
+                        </button>
+                      )}
                       <button
                         className="pixel-btn text-xs"
                         onClick={() => deleteRoom(room.id)}
@@ -383,13 +411,22 @@ export function LobbyView() {
                       </span>
                     </div>
                     <div className="flex gap-2">
-                      <button
-                        className="pixel-btn text-xs"
-                        onClick={() => joinRoom(room.id)}
-                        disabled={room.player_count >= 2}
-                      >
-                        {room.player_count >= 2 ? '已满' : '加入'}
-                      </button>
+                      {isRoomFinished(room) ? (
+                        <button
+                          className="pixel-btn pixel-btn-primary text-xs"
+                          onClick={() => useGameStore.getState().setArchiveRoom(room.id)}
+                        >
+                          故事回顾
+                        </button>
+                      ) : (
+                        <button
+                          className="pixel-btn text-xs"
+                          onClick={() => joinRoom(room.id)}
+                          disabled={room.player_count >= 2}
+                        >
+                          {room.player_count >= 2 ? '已满' : '加入'}
+                        </button>
+                      )}
                       <button
                         className="pixel-btn text-xs"
                         onClick={() => deleteRoom(room.id)}
@@ -407,7 +444,7 @@ export function LobbyView() {
       </div>
 
       {/* Avatar Preview */}
-      <div className="flex flex-wrap gap-3 justify-center mt-2">
+      <div className="avatar-preview flex flex-wrap gap-3 justify-center mt-2">
         {AVATAR_LIST.map(a => (
           <div key={a.id} className="flex flex-col items-center gap-1">
             <PixelAvatar avatarId={a.id} size={32} />

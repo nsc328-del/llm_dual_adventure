@@ -29,6 +29,7 @@ export type ClientMessage =
   | WSMessage<'ready', {}>
   | WSMessage<'submit_action', { action: string }>
   | WSMessage<'vote_finale', {}>
+  | WSMessage<'vote_direction', { direction: string }>
   | WSMessage<'ping', {}>;
 
 // --- Server → Client ---
@@ -49,6 +50,8 @@ export type ServerMessage =
   | WSMessage<'review_triggered', { entry: StoryEntry; turn: number }>
   | WSMessage<'finale_started', {}>
   | WSMessage<'finale_complete', { gameState: GameState }>
+  | WSMessage<'directions_pending', { directions: string[] }>
+  | WSMessage<'direction_resolved', { direction: string }>
   | WSMessage<'generation_error', { message: string }>
   | WSMessage<'error', { code: string; message: string }>
   | WSMessage<'pong', {}>;

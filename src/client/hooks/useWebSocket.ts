@@ -154,6 +154,12 @@ function handleServerMessage(msg: ServerMessage) {
     case 'review_triggered':
       store.handleReviewTriggered(msg.payload.entry, msg.payload.turn);
       break;
+    case 'directions_pending':
+      store.handleDirectionsPending((msg.payload as any).directions);
+      break;
+    case 'direction_resolved':
+      store.handleDirectionResolved((msg.payload as any).direction);
+      break;
     case 'gen_params_updated':
       store.handleGenParamsUpdated(msg.payload.params);
       break;
