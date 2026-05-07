@@ -118,9 +118,19 @@ function handleServerMessage(msg: ServerMessage) {
   const store = useGameStore.getState();
 
   switch (msg.type) {
-    case 'room_state':
+    case 'room_state': {
       store.handleRoomState(msg.payload as any);
+      // In local mode, auto-reconnect P2's WebSocket after page reload
+      const isLocal = useGameStore.getState().isLocalMode;
+      if (isLocal && !globalWsP2) {
+        const p = msg.payload as any;
+        const p2 = p.room?.players?.find((pl: any) => pl.slot !== p.slot);
+        if (p2) {
+          connectLocalP2(p.room.id, p2.displayName, p2.id);
+        }
+      }
       break;
+    }
     case 'player_joined':
       store.handlePlayerJoined(msg.payload.player);
       break;
@@ -149,7 +159,7 @@ function handleServerMessage(msg: ServerMessage) {
       store.handleNarrationStream(msg.payload.chunk);
       break;
     case 'narration_complete':
-      store.handleNarrationComplete(msg.payload.entry);
+      store.handleNarrationComplete(msg.payload.entry, (msg.payload as any).characterStatuses);
       break;
     case 'review_triggered':
       store.handleReviewTriggered(msg.payload.entry, msg.payload.turn);
@@ -171,6 +181,16 @@ function handleServerMessage(msg: ServerMessage) {
       break;
     case 'generation_error':
       store.handleGenerationError(msg.payload.message);
+      break;
+    case 'reaction_received':
+      store.handleReactionReceived(
+        (msg.payload as any).entryId,
+        (msg.payload as any).emoji,
+        (msg.payload as any).playerSlot,
+      );
+      break;
+    case 'narrator_style_updated':
+      store.handleNarratorStyleUpdated((msg.payload as any).style);
       break;
     case 'error':
       console.error(`[WS Error] ${msg.payload.code}: ${msg.payload.message}`);

@@ -1,19 +1,21 @@
-import type { GameState, Scenario, PlayerInfo, StoryEntry } from '../../shared/types.js';
+import type { GameState, Scenario, PlayerInfo, StoryEntry, NarratorStyleId } from '../../shared/types.js';
 import type { LLMMessage } from '../llm/adapter.js';
-import { DEFAULT_SYSTEM_PROMPT } from '../../shared/constants.js';
+import { DEFAULT_SYSTEM_PROMPT, NARRATOR_STYLES } from '../../shared/constants.js';
 
 export function buildSystemPrompt(
   scenario: Scenario,
   players: PlayerInfo[],
   customSystemPrompt?: string,
+  narratorStyle?: NarratorStyleId,
 ): string {
   const base = customSystemPrompt || DEFAULT_SYSTEM_PROMPT;
+  const styleModifier = NARRATOR_STYLES.find(s => s.id === narratorStyle)?.modifier ?? '';
 
   const p1 = players.find(p => p.slot === 1);
   const p2 = players.find(p => p.slot === 2);
 
   return `${base}
-
+${styleModifier ? `\n## 叙事风格\n${styleModifier}\n` : ''}
 ## 场景设定
 **${scenario.name}** — ${scenario.genre}
 
@@ -41,7 +43,7 @@ function formatCharacter(c: { name: string; description: string; traits: string[
 export function buildMessages(
   systemPrompt: string,
   storyLog: StoryEntry[],
-  activePlayerSlot: 1 | 2,
+  nextPlayerSlot: 1 | 2,
   players: PlayerInfo[],
   maxContextLength: number,
 ): LLMMessage[] {
@@ -49,8 +51,14 @@ export function buildMessages(
     { role: 'system', content: systemPrompt },
   ];
 
-  const activePlayer = players.find(p => p.slot === activePlayerSlot);
-  const activeName = activePlayer?.character?.name ?? activePlayer?.displayName ?? `玩家${activePlayerSlot}`;
+  // nextPlayerSlot = the player who will act NEXT (already switched in processAction)
+  // previousPlayerSlot = the player who just acted
+  const previousPlayerSlot = nextPlayerSlot === 1 ? 2 : 1;
+  const previousPlayer = players.find(p => p.slot === previousPlayerSlot);
+  const previousName = previousPlayer?.character?.name ?? previousPlayer?.displayName ?? `玩家${previousPlayerSlot}`;
+
+  const nextPlayer = players.find(p => p.slot === nextPlayerSlot);
+  const nextName = nextPlayer?.character?.name ?? nextPlayer?.displayName ?? `玩家${nextPlayerSlot}`;
 
   for (const entry of storyLog) {
     if (entry.type === 'narration' || entry.type === 'review' || entry.type === 'finale') {
@@ -66,7 +74,7 @@ export function buildMessages(
 
   messages.push({
     role: 'user',
-    content: `请继续叙事。当前是${activeName}行动后的情节发展。记住在叙事结束后用 ---SUGGESTIONS--- 格式提供2-3个建议行动给下一位玩家。`,
+    content: `请继续叙事。当前是${previousName}行动后的情节发展，请根据${previousName}的行动推进故事。记住在叙事结束后用 ---SUGGESTIONS--- 格式提供2-3个建议行动给${nextName}（下一位行动的玩家）。每个建议必须以 [${nextName}] 开头，从${nextName}的视角和处境出发。同时在最后用 ---STATUS--- 格式更新两位角色的状态。`,
   });
 
   return trimToContextWindow(messages, maxContextLength);
@@ -75,12 +83,14 @@ export function buildMessages(
 export function buildOpeningMessages(
   systemPrompt: string,
   scenario: Scenario,
+  p1Name?: string,
 ): LLMMessage[] {
+  const name = p1Name || '玩家1';
   return [
     { role: 'system', content: systemPrompt },
     {
       role: 'user',
-      content: `请根据以下开场提示生成游戏的开场叙事。这是故事的开始，请设置场景和氛围，然后在结尾用 ---SUGGESTIONS--- 格式为玩家1提供2-3个初始行动建议。
+      content: `请根据以下开场提示生成游戏的开场叙事。这是故事的开始，请设置场景和氛围，然后在结尾用 ---SUGGESTIONS--- 格式为${name}提供2-3个初始行动建议。每个建议必须以 [${name}] 开头，从${name}的视角出发。同时在最后用 ---STATUS--- 格式更新两位角色的状态。
 
 开场提示:
 ${scenario.openingPrompt}`,

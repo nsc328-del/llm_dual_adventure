@@ -1,11 +1,48 @@
+import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import type { StoryEntry as StoryEntryType } from '@shared/types.js';
+import type { StoryEntry as StoryEntryType, ReactionEmoji } from '@shared/types.js';
 import { PixelAvatar } from '../theme/PixelAvatar.js';
 import { useGameStore } from '../../stores/gameStore.js';
 import { useWS } from '../../App.js';
+import { sendAsP2 } from '../../hooks/useWebSocket.js';
+
+const REACTION_EMOJIS: ReactionEmoji[] = ['😱', '😂', '😰', '🔥', '👍'];
+const EMPTY_REACTIONS: { emoji: ReactionEmoji; playerSlot: 1 | 2 }[] = [];
 
 interface StoryEntryProps {
   entry: StoryEntryType;
+}
+
+function ReactionBar({ entryId }: { entryId: string }) {
+  const { send } = useWS();
+  const mySlot = useGameStore(s => s.mySlot);
+  const entryReactions = useGameStore(s => s.reactions[entryId] ?? EMPTY_REACTIONS);
+  const [popEmoji, setPopEmoji] = useState<string | null>(null);
+
+  function handleReact(emoji: ReactionEmoji) {
+    send('send_reaction', { entryId, emoji });
+    setPopEmoji(emoji);
+    setTimeout(() => setPopEmoji(null), 300);
+  }
+
+  return (
+    <div className="reaction-bar" style={{ marginTop: '4px' }}>
+      {REACTION_EMOJIS.map(emoji => {
+        const count = entryReactions.filter(r => r.emoji === emoji).length;
+        const active = entryReactions.some(r => r.emoji === emoji && r.playerSlot === mySlot);
+        return (
+          <span
+            key={emoji}
+            className={`reaction-emoji${active ? ' active' : ''}${popEmoji === emoji ? ' reaction-pop' : ''}`}
+            onClick={() => handleReact(emoji)}
+          >
+            {emoji}
+            {count > 0 && <span className="reaction-count">{count}</span>}
+          </span>
+        );
+      })}
+    </div>
+  );
 }
 
 export function StoryEntryView({ entry }: StoryEntryProps) {
@@ -29,13 +66,34 @@ export function StoryEntryView({ entry }: StoryEntryProps) {
   if (entry.type === 'review') {
     const directions = entry.suggestions ?? [];
     const hasDirections = directions.length > 0;
-    const hasVoted = votedDirection !== null;
+    const isLocalMode = useGameStore(s => s.isLocalMode);
+    const localP1Voted = useGameStore(s => s.localP1Voted);
+    // In local mode, "hasVoted" means both players voted; in online mode, just the current player
+    const hasVoted = isLocalMode ? (votedDirection !== null && localP1Voted) : votedDirection !== null;
     const isResolved = resolvedDirection !== null;
 
     function handleVoteDirection(direction: string) {
-      useGameStore.setState({ votedDirection: direction });
-      send('vote_direction', { direction });
+      if (isLocalMode) {
+        if (!localP1Voted) {
+          // First click: P1 votes
+          send('vote_direction', { direction });
+          useGameStore.setState({ localP1Voted: true, votedDirection: direction });
+        } else {
+          // Second click: P2 votes
+          sendAsP2('vote_direction', { direction });
+          useGameStore.setState({ votedDirection: direction });
+        }
+      } else {
+        useGameStore.setState({ votedDirection: direction });
+        send('vote_direction', { direction });
+      }
     }
+
+    const voteLabel = isResolved
+      ? '故事方向已决定'
+      : isLocalMode
+        ? (localP1Voted ? (hasVoted ? '等待结果...' : 'P2 请投票') : 'P1 请投票')
+        : (hasVoted ? '等待对方投票...' : '投票选择故事方向');
 
     return (
       <div
@@ -56,7 +114,7 @@ export function StoryEntryView({ entry }: StoryEntryProps) {
         {hasDirections && (
           <div className="mt-3 pt-3" style={{ borderTop: '1px dashed var(--theme-border)' }}>
             <span className="pixel-text text-xs block mb-2" style={{ color: 'var(--theme-accent)' }}>
-              {isResolved ? '故事方向已决定' : hasVoted ? '等待对方投票...' : '投票选择故事方向'}
+              {voteLabel}
             </span>
             <div className="flex flex-col gap-2 items-center">
               {directions.map((dir, i) => {
@@ -116,9 +174,10 @@ export function StoryEntryView({ entry }: StoryEntryProps) {
             background: isMe ? 'var(--theme-player1-bg, rgba(100,200,100,0.1))' : 'var(--theme-player2-bg, rgba(100,100,200,0.1))',
           }}
         >
-          <p className="text-sm break-words" style={{ color: 'var(--theme-text)', overflowWrap: 'anywhere' }}>
-            {entry.content}
-          </p>
+          <div className="text-sm break-words prose-sm" style={{ color: 'var(--theme-text)', overflowWrap: 'anywhere' }}>
+            <ReactMarkdown>{entry.content}</ReactMarkdown>
+          </div>
+          <ReactionBar entryId={entry.id} />
         </div>
       </div>
     );
@@ -141,6 +200,7 @@ export function StoryEntryView({ entry }: StoryEntryProps) {
         <div className="prose-sm break-words" style={{ color: 'var(--theme-text)', overflowWrap: 'anywhere' }}>
           <ReactMarkdown>{entry.content}</ReactMarkdown>
         </div>
+        <ReactionBar entryId={entry.id} />
       </div>
     </div>
   );

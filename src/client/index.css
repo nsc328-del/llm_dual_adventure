@@ -411,6 +411,20 @@ body {
   border-image: repeating-linear-gradient(90deg, #8a6840 0px, #8a6840 8px, #6a5030 8px, #6a5030 10px, #9a7850 10px, #9a7850 16px, #6a5030 16px, #6a5030 18px) 4;
 }
 
+/* ===== CHARACTER STATUS PANEL ===== */
+
+.status-panel {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.status-panel button:hover {
+  background: var(--theme-surface-hover) !important;
+}
+
+.status-panel-content {
+  transition: max-height 0.25s ease-in-out;
+}
+
 /* ===== ENTRY ANIMATIONS ===== */
 
 @keyframes fadeSlideIn {
@@ -431,6 +445,17 @@ body {
   animation: fadeSlideIn 0.25s ease-out both;
 }
 
+/* Inline markdown in suggestion buttons */
+.suggestion-md p,
+.suggestion-md span {
+  display: inline;
+  margin: 0;
+}
+.suggestion-md strong {
+  font-weight: 700;
+  color: var(--theme-accent);
+}
+
 /* ===== STREAMING CURSOR ===== */
 
 @keyframes blink {
@@ -445,6 +470,17 @@ body {
   color: var(--theme-accent);
   margin-left: 2px;
 }
+
+/* ===== REACTIONS ===== */
+
+.reaction-bar { display: flex; gap: 4px; opacity: 0.3; transition: opacity 0.2s; margin-top: 6px; }
+.reaction-bar:hover { opacity: 1; }
+.reaction-emoji { cursor: pointer; font-size: 14px; padding: 2px 4px; border-radius: 4px; transition: transform 0.15s; user-select: none; }
+.reaction-emoji:hover { transform: scale(1.3); }
+.reaction-emoji.active { background: var(--theme-surface); }
+.reaction-count { font-size: 10px; color: var(--theme-text-secondary); margin-left: 1px; }
+@keyframes reactionPop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
+.reaction-pop { animation: reactionPop 0.3s ease; }
 
 /* ===== PHASE TRANSITIONS ===== */
 

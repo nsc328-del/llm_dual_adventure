@@ -69,7 +69,7 @@ export function App() {
         <WSContext.Provider value={{ send }}>
           <PixelDecorations />
           <AppShell>
-            <div key={animKey} className="phase-enter flex-1 flex flex-col">
+            <div key={animKey} className={`phase-enter flex-1 flex flex-col min-h-0 ${phase === 'playing' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
               {phase === 'lobby' && <LobbyView />}
               {phase === 'setup' && <SetupView />}
               {phase === 'playing' && <GameView />}

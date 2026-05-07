@@ -126,6 +126,9 @@ export function SetupView() {
               <button
                 className="pixel-btn pixel-btn-primary w-full text-sm py-3"
                 onClick={async () => {
+                  // Always send LLM config before readying (only one player needs to fill it)
+                  send('update_llm_config', { config: llmConfig });
+                  await new Promise(r => setTimeout(r, 200));
                   if (isLocalMode) {
                     sendAsP2('update_llm_config', { config: llmConfig });
                     await new Promise(r => setTimeout(r, 200));

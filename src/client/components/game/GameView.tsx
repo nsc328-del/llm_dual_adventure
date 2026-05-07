@@ -2,6 +2,7 @@ import { useGameStore } from '../../stores/gameStore.js';
 import { useWS } from '../../App.js';
 import { StoryLog } from './StoryLog.js';
 import { ActionInput } from './ActionInput.js';
+import { CharacterStatusPanel } from './CharacterStatusPanel.js';
 import { PixelAvatar } from '../theme/PixelAvatar.js';
 import { disconnectP2 } from '../../hooks/useWebSocket.js';
 
@@ -64,6 +65,9 @@ export function GameView() {
           label={isLocalMode ? 'P2' : ''}
         />
       </div>
+
+      {/* Character status panel */}
+      <CharacterStatusPanel />
 
       {/* Story log */}
       <StoryLog />

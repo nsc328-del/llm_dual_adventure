@@ -3,7 +3,9 @@ import type {
   GameState,
   GenerationParams,
   LLMConfig,
+  NarratorStyleId,
   PlayerInfo,
+  ReactionEmoji,
   Room,
   Scenario,
   StoryEntry,
@@ -30,6 +32,8 @@ export type ClientMessage =
   | WSMessage<'submit_action', { action: string }>
   | WSMessage<'vote_finale', {}>
   | WSMessage<'vote_direction', { direction: string }>
+  | WSMessage<'send_reaction', { entryId: string; emoji: ReactionEmoji }>
+  | WSMessage<'update_narrator_style', { style: NarratorStyleId }>
   | WSMessage<'ping', {}>;
 
 // --- Server → Client ---
@@ -53,5 +57,7 @@ export type ServerMessage =
   | WSMessage<'directions_pending', { directions: string[] }>
   | WSMessage<'direction_resolved', { direction: string }>
   | WSMessage<'generation_error', { message: string }>
+  | WSMessage<'reaction_received', { entryId: string; emoji: ReactionEmoji; playerSlot: 1 | 2 }>
+  | WSMessage<'narrator_style_updated', { style: NarratorStyleId }>
   | WSMessage<'error', { code: string; message: string }>
   | WSMessage<'pong', {}>;

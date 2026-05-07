@@ -4,16 +4,20 @@ import { getAdapter } from '../llm/factory.js';
 import { buildSystemPrompt, buildMessages, buildOpeningMessages, buildReviewMessages } from './narrator.js';
 import { broadcastAll, getRoomClients, sendTo } from '../ws/broadcast.js';
 import { REVIEW_INTERVAL, DEFAULT_GEN_PARAMS } from '../../shared/constants.js';
-import type { GameState, StoryEntry, Scenario, PlayerInfo, LLMConfig, GenerationParams } from '../../shared/types.js';
+import type { GameState, StoryEntry, Scenario, PlayerInfo, LLMConfig, GenerationParams, CharacterStatus, ReactionEmoji, NarratorStyleId } from '../../shared/types.js';
 
 const generatingRooms = new Set<string>();
 
 export function parseSuggestions(content: string): { narration: string; suggestions: string[] } {
-  const idx = content.indexOf('---SUGGESTIONS---');
-  if (idx === -1) return { narration: content.trim(), suggestions: [] };
+  // Strip ---STATUS--- section first (it comes after suggestions)
+  const statusIdx = content.indexOf('---STATUS---');
+  const contentWithoutStatus = statusIdx === -1 ? content : content.slice(0, statusIdx).trim();
 
-  const narration = content.slice(0, idx).trim();
-  const suggestionsRaw = content.slice(idx + '---SUGGESTIONS---'.length).trim();
+  const idx = contentWithoutStatus.indexOf('---SUGGESTIONS---');
+  if (idx === -1) return { narration: contentWithoutStatus.trim(), suggestions: [] };
+
+  const narration = contentWithoutStatus.slice(0, idx).trim();
+  const suggestionsRaw = contentWithoutStatus.slice(idx + '---SUGGESTIONS---'.length).trim();
   const suggestions = suggestionsRaw
     .split('\n')
     .map(line => line.replace(/^\d+\.\s*/, '').trim())
@@ -22,11 +26,53 @@ export function parseSuggestions(content: string): { narration: string; suggesti
   return { narration, suggestions };
 }
 
+export function parseStatus(content: string): CharacterStatus[] {
+  const idx = content.indexOf('---STATUS---');
+  if (idx === -1) return [];
+
+  const statusRaw = content.slice(idx + '---STATUS---'.length).trim();
+  const lines = statusRaw.split('\n').map(l => l.trim()).filter(Boolean);
+  const statuses: CharacterStatus[] = [];
+
+  for (const line of lines) {
+    // Format: [角色名]: 位置:xxx | 物品:xxx,xxx | 状态:xxx
+    const colonIdx = line.indexOf(':');
+    if (colonIdx === -1) continue;
+
+    const name = line.slice(0, colonIdx).trim();
+    const rest = line.slice(colonIdx + 1).trim();
+    const parts = rest.split('|').map(p => p.trim());
+
+    let location = '';
+    let items: string[] = [];
+    let condition = '';
+
+    for (const part of parts) {
+      if (part.startsWith('位置:') || part.startsWith('位置：')) {
+        location = part.slice(3).trim();
+      } else if (part.startsWith('物品:') || part.startsWith('物品：')) {
+        items = part.slice(3).split(/[,，]/).map(i => i.trim()).filter(Boolean);
+      } else if (part.startsWith('状态:') || part.startsWith('状态：')) {
+        condition = part.slice(3).trim();
+      }
+    }
+
+    if (name) {
+      statuses.push({ name, location, items, condition });
+    }
+  }
+
+  return statuses;
+}
+
 export function parseDirections(content: string): { review: string; directions: string[] } {
   const idx = content.indexOf('---DIRECTIONS---');
   if (idx === -1) return { review: content.trim(), directions: [] };
   const review = content.slice(0, idx).trim();
-  const directionsRaw = content.slice(idx + '---DIRECTIONS---'.length).trim();
+  let directionsRaw = content.slice(idx + '---DIRECTIONS---'.length).trim();
+  // Strip STATUS section if present
+  const statusIdx = directionsRaw.indexOf('---STATUS---');
+  if (statusIdx !== -1) directionsRaw = directionsRaw.slice(0, statusIdx).trim();
   const directions = directionsRaw
     .split('\n')
     .map(line => line.replace(/^\d+\.\s*/, '').trim())
@@ -50,14 +96,17 @@ function getGameState(roomId: string): GameState | null {
   if (row.direction_votes) state.directionVotes = JSON.parse(row.direction_votes);
   if (row.voted_players) state.votedPlayers = JSON.parse(row.voted_players);
   if (row.pending_directions) state.pendingDirections = JSON.parse(row.pending_directions);
+  if (row.character_statuses) state.characterStatuses = JSON.parse(row.character_statuses);
+  if (row.reactions) state.reactions = JSON.parse(row.reactions);
+  if (row.narrator_style) state.narratorStyle = row.narrator_style;
   return state;
 }
 
 function saveGameState(state: GameState) {
   const db = getDb();
   db.prepare(
-    `INSERT OR REPLACE INTO game_states (room_id, current_turn, active_player, story_log, generation_params, system_prompt, status, direction_votes, voted_players, pending_directions)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT OR REPLACE INTO game_states (room_id, current_turn, active_player, story_log, generation_params, system_prompt, status, direction_votes, voted_players, pending_directions, character_statuses, reactions, narrator_style)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     state.roomId,
     state.currentTurn,
@@ -69,6 +118,9 @@ function saveGameState(state: GameState) {
     state.directionVotes ? JSON.stringify(state.directionVotes) : null,
     state.votedPlayers ? JSON.stringify(state.votedPlayers) : null,
     state.pendingDirections ? JSON.stringify(state.pendingDirections) : null,
+    state.characterStatuses ? JSON.stringify(state.characterStatuses) : null,
+    state.reactions ? JSON.stringify(state.reactions) : null,
+    state.narratorStyle ?? 'default',
   );
 }
 
@@ -130,14 +182,18 @@ async function generateOpening(
   scenario: Scenario,
   players: PlayerInfo[],
 ) {
-  const activePlayer = players.find(p => p.slot === 1);
-  const config = activePlayer?.llmConfig;
+  // Try P1's config first, then fall back to any available config
+  const config = players.find(p => p.slot === 1)?.llmConfig?.apiKey
+    ? players.find(p => p.slot === 1)!.llmConfig
+    : players.find(p => p.llmConfig?.apiKey)?.llmConfig ?? null;
   if (!config?.apiKey) {
-    broadcastAll(roomId, 'generation_error', { message: '玩家1未配置 LLM API Key' });
+    broadcastAll(roomId, 'generation_error', { message: '未找到可用的 LLM API Key，至少需要一方配置' });
     return;
   }
 
-  const messages = buildOpeningMessages(state.systemPrompt, scenario);
+  const p1 = players.find(p => p.slot === 1);
+  const p1Name = p1?.character?.name ?? p1?.displayName ?? '玩家1';
+  const messages = buildOpeningMessages(state.systemPrompt, scenario, p1Name);
   await streamNarration(roomId, state, config, messages, 'narration');
 }
 
@@ -169,9 +225,14 @@ export async function processAction(
 
   broadcastAll(roomId, 'action_received', { entry: actionEntry });
 
-  const activeConfig = players.find(p => p.slot === playerSlot)?.llmConfig;
+  // Use acting player's config; fall back to any available config (important for local 2P mode
+  // where only P1 has an LLM config)
+  let activeConfig = players.find(p => p.slot === playerSlot)?.llmConfig;
   if (!activeConfig?.apiKey) {
-    broadcastAll(roomId, 'generation_error', { message: `玩家${playerSlot}未配置 LLM API Key` });
+    activeConfig = players.find(p => p.llmConfig?.apiKey)?.llmConfig ?? null;
+  }
+  if (!activeConfig?.apiKey) {
+    broadcastAll(roomId, 'generation_error', { message: `未找到可用的 LLM API Key` });
     return;
   }
 
@@ -226,6 +287,7 @@ async function streamNarration(
       }
 
       const { narration, suggestions } = parseSuggestions(fullContent);
+      const characterStatuses = parseStatus(fullContent);
 
       const entry: StoryEntry = {
         id: nanoid(8),
@@ -236,16 +298,20 @@ async function streamNarration(
         timestamp: new Date().toISOString(),
       };
 
+      if (characterStatuses.length > 0) {
+        state.characterStatuses = characterStatuses;
+      }
       state.storyLog.push(entry);
       saveGameState(state);
 
-      broadcastAll(roomId, 'narration_complete', { entry });
+      broadcastAll(roomId, 'narration_complete', { entry, characterStatuses: characterStatuses.length > 0 ? characterStatuses : undefined });
     } catch (err: any) {
       // Retry once on failure
       try {
         const retryResponse = await adapter.generate(messages, config, state.generationParams);
         fullContent = retryResponse.content;
         const { narration, suggestions } = parseSuggestions(fullContent);
+        const retryStatuses = parseStatus(fullContent);
         const entry: StoryEntry = {
           id: nanoid(8),
           type: entryType,
@@ -254,9 +320,12 @@ async function streamNarration(
           turnNumber: state.currentTurn,
           timestamp: new Date().toISOString(),
         };
+        if (retryStatuses.length > 0) {
+          state.characterStatuses = retryStatuses;
+        }
         state.storyLog.push(entry);
         saveGameState(state);
-        broadcastAll(roomId, 'narration_complete', { entry });
+        broadcastAll(roomId, 'narration_complete', { entry, characterStatuses: retryStatuses.length > 0 ? retryStatuses : undefined });
         return;
       } catch {
         // retry also failed
@@ -366,6 +435,19 @@ export function updateSystemPrompt(roomId: string, prompt: string) {
   saveGameState(state);
 }
 
+export function updateNarratorStyle(roomId: string, style: NarratorStyleId) {
+  const state = getGameState(roomId);
+  if (!state) return;
+  state.narratorStyle = style;
+  // Rebuild system prompt with the new style
+  const scenario = getScenario(roomId);
+  if (scenario) {
+    const players = getPlayers(roomId);
+    state.systemPrompt = buildSystemPrompt(scenario, players, undefined, style);
+  }
+  saveGameState(state);
+}
+
 export function handleVoteDirection(roomId: string, playerSlot: 1 | 2, direction: string): void {
   const state = getGameState(roomId);
   if (!state) return;
@@ -415,4 +497,28 @@ export function handleVoteDirection(roomId: string, playerSlot: 1 | 2, direction
 
     broadcastAll(roomId, 'direction_resolved', { direction: chosenDirection });
   }
+}
+
+export function handleReaction(roomId: string, playerSlot: 1 | 2, entryId: string, emoji: ReactionEmoji): 'added' | 'removed' {
+  const state = getGameState(roomId);
+  if (!state) return 'removed';
+
+  if (!state.reactions) state.reactions = {};
+  if (!state.reactions[entryId]) state.reactions[entryId] = [];
+
+  const existing = state.reactions[entryId].findIndex(
+    r => r.playerSlot === playerSlot && r.emoji === emoji
+  );
+
+  let action: 'added' | 'removed';
+  if (existing !== -1) {
+    state.reactions[entryId].splice(existing, 1);
+    action = 'removed';
+  } else {
+    state.reactions[entryId].push({ emoji, playerSlot });
+    action = 'added';
+  }
+
+  saveGameState(state);
+  return action;
 }

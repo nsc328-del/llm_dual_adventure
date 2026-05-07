@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Room, GameState, Scenario, PlayerInfo, Character, LLMConfig, GenerationParams, StoryEntry, ThemeId } from '@shared/types.js';
+import type { Room, GameState, Scenario, PlayerInfo, Character, LLMConfig, GenerationParams, StoryEntry, ThemeId, CharacterStatus, ReactionEmoji, NarratorStyleId } from '@shared/types.js';
 
 export type AppPhase = 'lobby' | 'setup' | 'playing';
 
@@ -18,11 +18,22 @@ interface GameStore {
   gameState: GameState | null;
   isGenerating: boolean;
   streamBuffer: string;
+  displayedStreamLength: number;
+
+  // Character statuses
+  characterStatuses: CharacterStatus[];
+
+  // Narrator style
+  narratorStyle: NarratorStyleId;
+
+  // Reactions
+  reactions: Record<string, { emoji: ReactionEmoji; playerSlot: 1 | 2 }[]>;
 
   // Direction voting
   pendingDirections: string[] | null;
   votedDirection: string | null;
   resolvedDirection: string | null;
+  localP1Voted: boolean; // local mode: P1 has voted, waiting for P2
 
   // Archive
   archiveRoomId: string | null;
@@ -57,7 +68,7 @@ interface GameStore {
   handleGameStarted: (gameState: GameState) => void;
   handleActionReceived: (entry: StoryEntry) => void;
   handleNarrationStream: (chunk: string) => void;
-  handleNarrationComplete: (entry: StoryEntry) => void;
+  handleNarrationComplete: (entry: StoryEntry, characterStatuses?: CharacterStatus[]) => void;
   handleReviewTriggered: (entry: StoryEntry, turn: number) => void;
   handleGenParamsUpdated: (params: GenerationParams) => void;
   handleDirectionsPending: (directions: string[]) => void;
@@ -65,6 +76,8 @@ interface GameStore {
   handleFinaleStarted: () => void;
   handleFinaleComplete: (gameState: GameState) => void;
   handleGenerationError: (message: string) => void;
+  handleReactionReceived: (entryId: string, emoji: ReactionEmoji, playerSlot: 1 | 2) => void;
+  handleNarratorStyleUpdated: (style: NarratorStyleId) => void;
 
   reset: () => void;
 }
@@ -94,12 +107,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
   gameState: null,
   isGenerating: false,
   streamBuffer: '',
+  displayedStreamLength: 0,
+  characterStatuses: [],
+  narratorStyle: 'default' as NarratorStyleId,
+  reactions: {},
   error: null,
   pendingDirections: null,
   votedDirection: null,
   resolvedDirection: null,
+  localP1Voted: false,
   archiveRoomId: null,
-  isLocalMode: false,
+  isLocalMode: sessionStorage.getItem('isLocalMode') === 'true',
   displayName: '',
   llmConfig: INITIAL_LLM_CONFIG,
 
@@ -113,7 +131,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   clearError: () => set({ error: null }),
   setArchiveRoom: (roomId) => set({ archiveRoomId: roomId }),
   clearArchive: () => set({ archiveRoomId: null }),
-  setLocalMode: (v) => set({ isLocalMode: v }),
+  setLocalMode: (v) => {
+    set({ isLocalMode: v });
+    if (v) sessionStorage.setItem('isLocalMode', 'true');
+    else sessionStorage.removeItem('isLocalMode');
+  },
 
   handleRoomState: (data) => {
     const phase = data.gameState ? 'playing' : (data.room.status === 'playing' ? 'playing' : 'setup');
@@ -124,6 +146,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       playerId: data.playerId,
       mySlot: data.slot,
       phase,
+      characterStatuses: data.gameState?.characterStatuses ?? [],
+      narratorStyle: data.gameState?.narratorStyle ?? 'default',
+      reactions: data.gameState?.reactions ?? {},
       pendingDirections: data.gameState?.pendingDirections ?? null,
       votedDirection: null,
       resolvedDirection: null,
@@ -195,7 +220,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   handleGameStarted: (gameState) => {
-    set({ gameState, phase: 'playing', isGenerating: true, streamBuffer: '' });
+    set({ gameState, phase: 'playing', isGenerating: true, streamBuffer: '', displayedStreamLength: 0, reactions: gameState.reactions ?? {} });
   },
 
   handleActionReceived: (entry) => {
@@ -210,6 +235,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       },
       isGenerating: true,
       streamBuffer: '',
+      displayedStreamLength: 0,
     });
   },
 
@@ -217,17 +243,22 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set(s => ({ streamBuffer: s.streamBuffer + chunk }));
   },
 
-  handleNarrationComplete: (entry) => {
+  handleNarrationComplete: (entry, characterStatuses) => {
     const { gameState } = get();
     if (!gameState) return;
-    set({
+    const updates: Partial<GameStore> = {
       gameState: {
         ...gameState,
         storyLog: [...gameState.storyLog, entry],
       },
       isGenerating: false,
       streamBuffer: '',
-    });
+      displayedStreamLength: 0,
+    };
+    if (characterStatuses && characterStatuses.length > 0) {
+      updates.characterStatuses = characterStatuses;
+    }
+    set(updates);
   },
 
   handleReviewTriggered: (entry, turn) => {
@@ -250,7 +281,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   handleDirectionsPending: (directions) => {
-    set({ pendingDirections: directions, votedDirection: null, resolvedDirection: null });
+    set({ pendingDirections: directions, votedDirection: null, resolvedDirection: null, localP1Voted: false });
   },
 
   handleDirectionResolved: (direction) => {
@@ -262,21 +293,40 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   handleFinaleStarted: () => {
-    set({ isGenerating: true, streamBuffer: '' });
+    set({ isGenerating: true, streamBuffer: '', displayedStreamLength: 0 });
   },
 
   handleFinaleComplete: (gameState) => {
-    set({ gameState, isGenerating: false, streamBuffer: '' });
+    set({ gameState, isGenerating: false, streamBuffer: '', displayedStreamLength: 0 });
   },
 
   handleGenerationError: (message) => {
-    set({ isGenerating: false, streamBuffer: '', error: message });
+    set({ isGenerating: false, streamBuffer: '', displayedStreamLength: 0, error: message });
     console.error('[Generation Error]', message);
+  },
+
+  handleReactionReceived: (entryId, emoji, playerSlot) => {
+    const { reactions } = get();
+    const entryReactions = [...(reactions[entryId] ?? [])];
+    const existing = entryReactions.findIndex(
+      r => r.playerSlot === playerSlot && r.emoji === emoji
+    );
+    if (existing !== -1) {
+      entryReactions.splice(existing, 1);
+    } else {
+      entryReactions.push({ emoji, playerSlot });
+    }
+    set({ reactions: { ...reactions, [entryId]: entryReactions } });
+  },
+
+  handleNarratorStyleUpdated: (style) => {
+    set({ narratorStyle: style });
   },
 
   reset: () => {
     sessionStorage.removeItem('playerId');
     sessionStorage.removeItem('roomId');
+    sessionStorage.removeItem('isLocalMode');
     set({
       phase: 'lobby',
       playerId: null,
@@ -286,9 +336,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       gameState: null,
       isGenerating: false,
       streamBuffer: '',
+      displayedStreamLength: 0,
+      characterStatuses: [],
+      narratorStyle: 'default' as NarratorStyleId,
+      reactions: {},
       pendingDirections: null,
       votedDirection: null,
       resolvedDirection: null,
+      localP1Voted: false,
     });
   },
 }));

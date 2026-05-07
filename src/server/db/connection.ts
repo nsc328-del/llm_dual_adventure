@@ -47,6 +47,15 @@ export function runMigrations(): void {
   if (!gsCols.some((c: any) => c.name === 'pending_directions')) {
     database.exec("ALTER TABLE game_states ADD COLUMN pending_directions TEXT");
   }
+  if (!gsCols.some((c: any) => c.name === 'character_statuses')) {
+    database.exec("ALTER TABLE game_states ADD COLUMN character_statuses TEXT");
+  }
+  if (!gsCols.some((c: any) => c.name === 'reactions')) {
+    database.exec("ALTER TABLE game_states ADD COLUMN reactions TEXT");
+  }
+  if (!gsCols.some((c: any) => c.name === 'narrator_style')) {
+    database.exec("ALTER TABLE game_states ADD COLUMN narrator_style TEXT DEFAULT 'default'");
+  }
 }
 
 export function closeDb(): void {

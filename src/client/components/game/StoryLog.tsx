@@ -3,18 +3,19 @@ import { useGameStore } from '../../stores/gameStore.js';
 import { StoryEntryView } from './StoryEntry.js';
 import ReactMarkdown from 'react-markdown';
 import { PixelAvatar } from '../theme/PixelAvatar.js';
+import { useTypewriter } from '../../hooks/useTypewriter.js';
 
 export function StoryLog() {
   const storyLog = useGameStore(s => s.gameState?.storyLog ?? []);
-  const streamBuffer = useGameStore(s => s.streamBuffer);
   const isGenerating = useGameStore(s => s.isGenerating);
+  const displayedText = useTypewriter();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [storyLog.length, streamBuffer]);
+  }, [storyLog.length, displayedText]);
 
   return (
     <div
@@ -26,7 +27,7 @@ export function StoryLog() {
       ))}
 
       {/* Streaming content */}
-      {isGenerating && streamBuffer && (
+      {isGenerating && displayedText && (
         <div className="story-entry-appear my-4 mx-auto max-w-2xl">
           <div className="flex items-center gap-2 mb-2">
             <PixelAvatar avatarId="narrator" size={24} />
@@ -40,13 +41,13 @@ export function StoryLog() {
             }}
           >
             <div className="prose-sm streaming-cursor" style={{ color: 'var(--theme-text)' }}>
-              <ReactMarkdown>{streamBuffer}</ReactMarkdown>
+              <ReactMarkdown>{displayedText}</ReactMarkdown>
             </div>
           </div>
         </div>
       )}
 
-      {isGenerating && !streamBuffer && (
+      {isGenerating && !displayedText && (
         <div className="story-entry-appear text-center py-8">
           <div className="inline-flex items-center gap-3">
             <PixelAvatar avatarId="narrator" size={20} />

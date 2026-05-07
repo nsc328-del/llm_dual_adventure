@@ -49,9 +49,9 @@ function ErrorToast() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'var(--theme-bg)' }}>
+    <div className="h-screen flex flex-col overflow-hidden" style={{ background: 'var(--theme-bg)' }}>
       <Header />
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col min-h-0">
         {children}
       </main>
       <ErrorToast />

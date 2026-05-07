@@ -6,6 +6,7 @@ import { ConnectionStatus } from './ConnectionStatus.js';
 import { SoundToggle } from './SoundToggle.js';
 import { GenerationParamsPanel } from '../settings/GenerationParamsPanel.js';
 import { SystemPromptEditor } from '../settings/SystemPromptEditor.js';
+import { NarratorStyleSelector } from '../settings/NarratorStyleSelector.js';
 
 export function Header() {
   const [showSettings, setShowSettings] = useState(false);
@@ -58,6 +59,8 @@ export function Header() {
 
             {phase === 'playing' && (
               <>
+                <div style={{ borderTop: '1px solid var(--theme-border)' }} />
+                <NarratorStyleSelector />
                 <div style={{ borderTop: '1px solid var(--theme-border)' }} />
                 <GenerationParamsPanel />
                 <div style={{ borderTop: '1px solid var(--theme-border)' }} />

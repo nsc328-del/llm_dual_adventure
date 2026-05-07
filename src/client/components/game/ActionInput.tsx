@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useGameStore } from '../../stores/gameStore.js';
 import { useWS } from '../../App.js';
 import { sendAsP2 } from '../../hooks/useWebSocket.js';
@@ -91,11 +92,17 @@ export function ActionInput() {
           {suggestions.map((s, i) => (
             <button
               key={i}
-              className="suggestion-appear pixel-btn text-xs px-3 py-1.5"
+              className="suggestion-appear pixel-btn text-xs px-3 py-1.5 suggestion-md"
               onClick={() => submitAction(s)}
               style={{ maxWidth: '300px', animationDelay: `${i * 80}ms` }}
             >
-              {s}
+              <ReactMarkdown
+                components={{
+                  p: ({ children }) => <span>{children}</span>,
+                }}
+              >
+                {s}
+              </ReactMarkdown>
             </button>
           ))}
         </div>

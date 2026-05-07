@@ -5,7 +5,7 @@ import { getDb } from '../db/connection.js';
 import { addClient, removeClient, getRoomClients, sendTo, broadcastAll, type RoomClient } from './broadcast.js';
 import type { ClientMessage } from '../../shared/ws-types.js';
 import type { PlayerInfo, Room } from '../../shared/types.js';
-import { startGame, processAction, triggerFinale, updateGenParams, updateSystemPrompt, handleVoteDirection } from '../game/engine.js';
+import { startGame, processAction, triggerFinale, updateGenParams, updateSystemPrompt, handleVoteDirection, handleReaction, updateNarratorStyle } from '../game/engine.js';
 import { payloadSchemas } from '../../shared/schemas.js';
 
 interface ClientState {
@@ -86,6 +86,12 @@ function handleMessage(state: ClientState, msg: ClientMessage) {
       break;
     case 'update_system_prompt':
       handleUpdateSystemPrompt(state, msg.payload);
+      break;
+    case 'send_reaction':
+      handleSendReaction(state, msg.payload);
+      break;
+    case 'update_narrator_style':
+      handleUpdateNarratorStyle(state, msg.payload);
       break;
     default:
       sendTo(state.ws, 'error', { code: 'NOT_IMPLEMENTED', message: `${(msg as any).type} not yet implemented` });
@@ -267,6 +273,22 @@ function handleVoteDirectionMsg(state: ClientState, payload: { direction: string
   handleVoteDirection(state.roomId, state.slot, payload.direction);
 }
 
+function handleSendReaction(state: ClientState, payload: { entryId: string; emoji: any }) {
+  if (!state.roomId || !state.slot) return;
+  handleReaction(state.roomId, state.slot, payload.entryId, payload.emoji);
+  broadcastAll(state.roomId, 'reaction_received', {
+    entryId: payload.entryId,
+    emoji: payload.emoji,
+    playerSlot: state.slot,
+  });
+}
+
+function handleUpdateNarratorStyle(state: ClientState, payload: { style: any }) {
+  if (!state.roomId) return;
+  updateNarratorStyle(state.roomId, payload.style);
+  broadcastAll(state.roomId, 'narrator_style_updated', { style: payload.style });
+}
+
 function sendRoomState(state: ClientState) {
   if (!state.roomId) return;
   const db = getDb();
@@ -314,6 +336,8 @@ function sendRoomState(state: ClientState) {
       generationParams: JSON.parse(gs.generation_params),
       systemPrompt: gs.system_prompt,
       status: gs.status,
+      reactions: gs.reactions ? JSON.parse(gs.reactions) : undefined,
+      narratorStyle: gs.narrator_style || 'default',
     };
   }
 

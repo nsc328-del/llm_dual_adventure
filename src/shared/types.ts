@@ -53,7 +53,19 @@ export interface GameState {
   directionVotes?: Record<string, number>;
   votedPlayers?: (1 | 2)[];
   pendingDirections?: string[];
+  characterStatuses?: CharacterStatus[];
+  reactions?: Record<string, { emoji: ReactionEmoji; playerSlot: 1 | 2 }[]>;
+  narratorStyle?: NarratorStyleId;
 }
+
+export interface CharacterStatus {
+  name: string;
+  location: string;
+  items: string[];
+  condition: string;
+}
+
+export type ReactionEmoji = '😱' | '😂' | '😰' | '🔥' | '👍';
 
 export type RoomStatus = 'waiting' | 'setup' | 'playing' | 'finished';
 
@@ -75,6 +87,8 @@ export interface Room {
   players: PlayerInfo[];
   createdAt: string;
 }
+
+export type NarratorStyleId = 'default' | 'serious' | 'humorous' | 'horror' | 'romantic' | 'epic' | 'noir';
 
 export type ThemeId = 'forest' | 'ocean' | 'mech' | 'cyber' | 'western';
 

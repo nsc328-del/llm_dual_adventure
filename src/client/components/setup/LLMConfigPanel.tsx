@@ -71,11 +71,14 @@ export function LLMConfigPanel() {
       style={{ background: 'var(--theme-bg-secondary)' }}
     >
       <h3
-        className="pixel-text text-xs mb-4"
+        className="pixel-text text-xs mb-1"
         style={{ color: 'var(--theme-accent)' }}
       >
         LLM 配置
       </h3>
+      <p className="text-xs mb-4" style={{ color: 'var(--theme-text-secondary)' }}>
+        只需一方配置即可，双方共享
+      </p>
 
       {/* Provider toggle */}
       <div className="mb-3">

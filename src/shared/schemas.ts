@@ -57,6 +57,15 @@ const voteDirectionPayload = z.object({
   direction: z.string().min(1),
 });
 
+const sendReactionPayload = z.object({
+  entryId: z.string().min(1),
+  emoji: z.enum(['😱', '😂', '😰', '🔥', '👍']),
+});
+
+const updateNarratorStylePayload = z.object({
+  style: z.enum(['default', 'serious', 'humorous', 'horror', 'romantic', 'epic', 'noir']),
+});
+
 const clientMessageSchema = z.object({
   type: z.string(),
   payload: z.unknown(),
@@ -73,6 +82,8 @@ export const payloadSchemas: Record<string, z.ZodType> = {
   update_system_prompt: updateSystemPromptPayload,
   submit_action: submitActionPayload,
   vote_direction: voteDirectionPayload,
+  send_reaction: sendReactionPayload,
+  update_narrator_style: updateNarratorStylePayload,
 };
 
 export { clientMessageSchema };
