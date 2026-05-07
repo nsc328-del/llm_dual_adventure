@@ -36,6 +36,16 @@ export function CharacterEditor({ template, currentCharacter, label, sendFn }: C
       setBackstory(template.suggestedBackstory);
       setAppearance(template.suggestedAppearance);
       setAvatarId(template.suggestedAvatarId);
+      // Auto-save template as initial character so server has it
+      const character: Character = {
+        name: template.name,
+        description: template.description,
+        traits: template.suggestedTraits,
+        backstory: template.suggestedBackstory,
+        appearance: template.suggestedAppearance,
+        avatarId: template.suggestedAvatarId,
+      };
+      send('update_character', { character });
     }
   }, [template, currentCharacter]);
 

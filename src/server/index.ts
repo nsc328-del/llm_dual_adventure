@@ -5,6 +5,7 @@ import { runMigrations, closeDb } from './db/connection.js';
 import { loadPresets } from './scenarios/loader.js';
 import { roomRoutes } from './routes/rooms.js';
 import { scenarioRoutes } from './routes/scenarios.js';
+import { llmRoutes } from './routes/llm.js';
 import { registerWebSocket } from './ws/handler.js';
 
 const app = Fastify({ logger: true });
@@ -16,6 +17,7 @@ app.get('/api/health', async () => ({ status: 'ok', timestamp: new Date().toISOS
 
 await app.register(roomRoutes);
 await app.register(scenarioRoutes);
+await app.register(llmRoutes);
 await app.register(registerWebSocket);
 
 runMigrations();

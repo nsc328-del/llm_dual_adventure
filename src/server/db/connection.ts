@@ -27,6 +27,14 @@ export function runMigrations(): void {
     const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
     database.exec(sql);
   }
+
+  // Safe column additions for existing DBs
+  const cols = database.prepare("PRAGMA table_info(rooms)").all() as any[];
+  if (!cols.some((c: any) => c.name === 'is_local')) {
+    database.exec("ALTER TABLE rooms ADD COLUMN is_local INTEGER NOT NULL DEFAULT 0");
+  }
+  // Fix legacy local rooms created before is_local flag
+  database.exec("UPDATE rooms SET is_local = 1 WHERE name = '本地对战' AND is_local = 0");
 }
 
 export function closeDb(): void {

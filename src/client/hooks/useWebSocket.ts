@@ -22,7 +22,7 @@ function wsSend(ws: WebSocket | null, type: string, payload: unknown) {
   }
 }
 
-export function connectLocalP2(roomId: string, displayName: string): Promise<void> {
+export function connectLocalP2(roomId: string, displayName: string, playerId?: string): Promise<void> {
   return new Promise((resolve) => {
     if (globalWsP2?.readyState === WebSocket.OPEN) {
       globalWsP2.close();
@@ -30,7 +30,7 @@ export function connectLocalP2(roomId: string, displayName: string): Promise<voi
     const ws = new WebSocket(makeWsUrl());
     globalWsP2 = ws;
     ws.onopen = () => {
-      wsSend(ws, 'join_room', { roomId, displayName });
+      wsSend(ws, 'join_room', { roomId, displayName, playerId });
       resolve();
     };
     ws.onmessage = () => {};

@@ -61,7 +61,7 @@ const INITIAL_LLM_CONFIG: LLMConfig = {
   provider: 'openai',
   baseUrl: 'https://api.openai.com/v1',
   apiKey: '',
-  model: 'gpt-4o',
+  model: 'mimo-v2.5-pro',
 };
 
 export const useGameStore = create<GameStore>((set, get) => ({
